@@ -4,6 +4,7 @@ xelatex_compile.py
 自动编译LaTeX文件，生成PDF并管理文件
 """
 
+import re
 import os
 import sys
 import subprocess
