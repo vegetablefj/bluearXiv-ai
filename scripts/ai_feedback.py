@@ -9,12 +9,7 @@ import math
 # 获取项目根目录
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-def get_api_keys():
-    """从环境变量获取API密钥"""
-    deepseek_key = os.environ.get('DEEPSEEK_API_KEY')
-    modelscope_key = os.environ.get('MODEL_SCOPE_API_KEY')
-    
-    return deepseek_key, modelscope_key
+
 
 def get_file_paths():
     """获取所有必要的文件路径"""
@@ -111,7 +106,11 @@ def process_all_papers(batch_size: int = 5) -> Tuple[List[Dict], int]:
     total_batches = math.ceil(len(all_papers) / batch_size)
     print(f"将分 {total_batches} 批处理，每批 {batch_size} 篇论文")
     
-    # 初始化DeepSeek客户端
+    # 初始化客户端
+    
+    deepseek_key = os.environ.get('DEEPSEEK_API_KEY')
+    modelscope_key = os.environ.get('MODEL_SCOPE_API_KEY')
+    
     client = openai.OpenAI(
         api_key=modelscope_key,  # 替换为你的API密钥
         base_url="https://api-inference.modelscope.cn/v1/"
