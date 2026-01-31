@@ -3,15 +3,15 @@ name: arXiv Daily Paper Pipeline
 
 on:
   schedule:
-    - cron: '0 4 * * *'  # 每天UTC时间4点（北京时间12点）
+    - cron: '0 4 * * *'  # UTC时间4点 = 北京时间12点
   workflow_dispatch:
     inputs:
       skip_fetch:
-        description: '跳过抓取步骤（使用现有数据）'
+        description: '跳过抓取步骤'
         required: false
         default: 'false'
       test_mode:
-        description: '测试模式（只处理少量论文）'
+        description: '测试模式'
         required: false
         default: 'false'
 
@@ -27,68 +27,105 @@ jobs:
       uses: actions/checkout@v4
     
     - name: Set up Python
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v4
       with:
         python-version: ${{ env.PYTHON_VERSION }}
     
-    - name: Install dependencies
+    - name: Install Python dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install requests beautifulsoup4 arxiv-py openai
+        # 只安装实际需要的包
+        pip install requests beautifulsoup4 openai
+        # 验证安装
+        python -c "import requests; print('✓ requests package: OK')"
+        python -c "from bs4 import BeautifulSoup; print('✓ beautifulsoup4 package: OK')"
+        python -c "import openai; print('✓ openai package: OK')"
     
     - name: Install LaTeX
       run: |
         sudo apt-get update
-        sudo apt-get install -y texlive-xetex texlive-latex-extra latexmk
+        sudo apt-get install -y \
+          texlive-xetex \
+          texlive-latex-extra \
+          texlive-fonts-extra \
+          texlive-science \
+          latexmk
     
-    - name: Test environment
+    - name: Create directories
       run: |
-        cd scripts
-        python test_environment.py
+        mkdir -p data/raw log config
     
     - name: Run pipeline
       env:
         DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
         MODEL_SCOPE_API_KEY: ${{ secrets.MODEL_SCOPE_API_KEY }}
       run: |
-        # 设置环境变量
-        export PYTHONPATH=$PWD
+        set -e  # 遇到错误立即退出
         
-        # 按顺序运行所有脚本
         echo "=== Starting arXiv Pipeline ==="
         
+        # 抓取论文（可选跳过）
         if [ "${{ github.event.inputs.skip_fetch }}" != "true" ]; then
           echo "1. Fetching paper IDs..."
-          python scripts/fetch_paper_ids.py
+          cd scripts && python fetch_paper_ids.py && cd ..
         else
           echo "1. Skipping fetch (using existing data)"
         fi
         
+        # AI反馈
         echo "2. Generating AI feedback..."
+        cd scripts
         if [ "${{ github.event.inputs.test_mode }}" = "true" ]; then
-          python scripts/ai_feedback.py --test-mode
+          python ai_feedback.py --test-mode
         else
-          python scripts/ai_feedback.py
+          python ai_feedback.py
         fi
+        cd ..
         
+        # 分类过滤
         echo "3. Running category filter..."
-        python scripts/category_filter.py
+        cd scripts && python category_filter.py && cd ..
         
+        # 生成TeX
         echo "4. Generating TeX file..."
-        python scripts/generate_tex.py
+        cd scripts && python generate_tex.py && cd ..
         
+        # 编译PDF
         echo "5. Compiling PDF..."
-        python scripts/xelatex_compile.py --use-latexmk
+        cd scripts && python xelatex_compile.py --use-latexmk && cd ..
         
         echo "=== Pipeline Complete ==="
     
-    - name: Upload results
+    - name: Check and upload results
+      run: |
+        echo "Generated files:"
+        ls -la
+        
+        if [ -f "latest.pdf" ]; then
+          echo "✓ PDF file generated successfully"
+          pdf_size=$(stat -c%s latest.pdf 2>/dev/null || echo "unknown")
+          echo "PDF size: $pdf_size bytes"
+        else
+          echo "✗ PDF file not found"
+          # 列出data目录内容用于调试
+          echo "Data directory contents:"
+          find data/ -type f | head -20
+        fi
+    
+    - name: Upload PDF artifact
+      if: success()
       uses: actions/upload-artifact@v4
       with:
-        name: arxiv-daily-results
+        name: arxiv-daily-pdf
+        path: latest.pdf
+        retention-days: 7
+    
+    - name: Upload data artifacts
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: arxiv-daily-data
         path: |
-          latest.pdf
-          latest.tex
           data/
           log/
-        retention-days: 7
+        retention-days: 3
