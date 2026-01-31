@@ -2,10 +2,8 @@
 name: arXiv Daily Paper Pipeline
 
 on:
-  # 定时触发：北京时间12点（UTC时间4点）和UTC时间16点（北京时间0点）
   schedule:
     - cron: '0 4 * * *'  # 每天UTC时间4点（北京时间12点）
-  # 手动触发
   workflow_dispatch:
     inputs:
       skip_fetch:
@@ -18,274 +16,79 @@ on:
         default: 'false'
 
 env:
-  # Python版本
   PYTHON_VERSION: '3.10'
-  # 时区设置
-  TZ: 'Asia/Shanghai'
-  # 项目根目录
-  PROJECT_ROOT: '.'
 
 jobs:
-  # 设置Python环境
-  setup:
+  process-papers:
     runs-on: ubuntu-latest
-    outputs:
-      python-version: ${{ steps.setup-python.outputs.python-version }}
+    
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+    - name: Checkout repository
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install requests beautifulsoup4 arxiv-py openai
+    
+    - name: Install LaTeX
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y texlive-xetex texlive-latex-extra latexmk
+    
+    - name: Test environment
+      run: |
+        cd scripts
+        python test_environment.py
+    
+    - name: Run pipeline
+      env:
+        DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+        MODEL_SCOPE_API_KEY: ${{ secrets.MODEL_SCOPE_API_KEY }}
+      run: |
+        # 设置环境变量
+        export PYTHONPATH=$PWD
         
-      - name: Set up Python
-        id: setup-python
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-          
-      - name: Cache pip packages
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
-          restore-keys: |
-            ${{ runner.os }}-pip-
-            
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-          pip install requests beautifulsoup4 arxiv-py openai
-
-  # 抓取论文ID
-  fetch-papers:
-    runs-on: ubuntu-latest
-    needs: setup
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+        # 按顺序运行所有脚本
+        echo "=== Starting arXiv Pipeline ==="
         
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-          
-      - name: Install dependencies
-        run: |
-          pip install requests beautifulsoup4 arxiv-py
-          
-      - name: Run fetch_paper_ids.py
-        if: ${{ github.event.inputs.skip_fetch != 'true' }}
-        env:
-          # 如果需要，可以在这里设置API密钥
-          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
-          MODEL_SCOPE_API_KEY: ${{ secrets.MODEL_SCOPE_API_KEY }}
-        run: |
-          cd scripts
-          python fetch_paper_ids.py
-          
-      - name: Upload fetched papers
-        if: ${{ github.event.inputs.skip_fetch != 'true' }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: fetched-papers
-          path: |
-            data/raw/
-            config/
-          retention-days: 3
-
-  # AI反馈生成
-  ai-feedback:
-    runs-on: ubuntu-latest
-    needs: [setup, fetch-papers]
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+        if [ "${{ github.event.inputs.skip_fetch }}" != "true" ]; then
+          echo "1. Fetching paper IDs..."
+          python scripts/fetch_paper_ids.py
+        else
+          echo "1. Skipping fetch (using existing data)"
+        fi
         
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-          
-      - name: Download fetched papers
-        uses: actions/download-artifact@v4
-        with:
-          name: fetched-papers
-          path: ./
-          
-      - name: Install dependencies
-        run: |
-          pip install openai
-          
-      - name: Run ai_feedback.py
-        env:
-          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
-          MODEL_SCOPE_API_KEY: ${{ secrets.MODEL_SCOPE_API_KEY }}
-        run: |
-          cd scripts
-          if [ "${{ github.event.inputs.test_mode }}" = "true" ]; then
-            echo "Running in test mode..."
-            python ai_feedback.py --test-mode
-          else
-            python ai_feedback.py
-          fi
-          
-      - name: Upload AI feedback results
-        uses: actions/upload-artifact@v4
-        with:
-          name: ai-feedback-results
-          path: |
-            data/raw/
-            config/
-          retention-days: 3
-
-  # 分类过滤
-  category-filter:
-    runs-on: ubuntu-latest
-    needs: [setup, ai-feedback]
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+        echo "2. Generating AI feedback..."
+        if [ "${{ github.event.inputs.test_mode }}" = "true" ]; then
+          python scripts/ai_feedback.py --test-mode
+        else
+          python scripts/ai_feedback.py
+        fi
         
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-          
-      - name: Download AI feedback results
-        uses: actions/download-artifact@v4
-        with:
-          name: ai-feedback-results
-          path: ./
-          
-      - name: Run category_filter.py
-        run: |
-          cd scripts
-          python category_filter.py
-          
-      - name: Upload categorized results
-        uses: actions/upload-artifact@v4
-        with:
-          name: categorized-results
-          path: data/raw/
-          retention-days: 3
-
-  # 生成TeX文件
-  generate-tex:
-    runs-on: ubuntu-latest
-    needs: [setup, category-filter]
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+        echo "3. Running category filter..."
+        python scripts/category_filter.py
         
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-          
-      - name: Download categorized results
-        uses: actions/download-artifact@v4
-        with:
-          name: categorized-results
-          path: ./
-          
-      - name: Run generate_tex.py
-        run: |
-          cd scripts
-          python generate_tex.py
-          
-      - name: Upload TeX files
-        uses: actions/upload-artifact@v4
-        with:
-          name: tex-files
-          path: |
-            data/raw/daily_feedback_tex/
-            latest.tex
-          retention-days: 3
-
-  # 编译TeX文件
-  compile-tex:
-    runs-on: ubuntu-latest
-    needs: [setup, generate-tex]
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+        echo "4. Generating TeX file..."
+        python scripts/generate_tex.py
         
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-          
-      - name: Download TeX files
-        uses: actions/download-artifact@v4
-        with:
-          name: tex-files
-          path: ./
-          
-      - name: Install LaTeX dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            texlive-xetex \
-            texlive-latex-extra \
-            texlive-fonts-extra \
-            texlive-science \
-            latexmk
-          
-      - name: Run xelatex_compile.py
-        run: |
-          cd scripts
-          python xelatex_compile.py --use-latexmk
-          
-      - name: Upload PDF files
-        uses: actions/upload-artifact@v4
-        with:
-          name: pdf-output
-          path: |
-            data/raw/
-            latest.pdf
-          retention-days: 7
-          
-      - name: Upload PDF as workflow artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: daily-feedback-pdf
-          path: latest.pdf
-          retention-days: 7
-
-  # 部署和通知
-  deploy-notify:
-    runs-on: ubuntu-latest
-    needs: [compile-tex]
-    if: always()
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+        echo "5. Compiling PDF..."
+        python scripts/xelatex_compile.py --use-latexmk
         
-      - name: Download PDF files
-        uses: actions/download-artifact@v4
-        with:
-          name: pdf-output
-          path: ./
-          
-      - name: Create summary file
-        run: |
-          echo "arXiv Daily Paper Pipeline Report" > pipeline_report.md
-          echo "=================================" >> pipeline_report.md
-          echo "" >> pipeline_report.md
-          echo "**Execution Time:** $(date '+%Y-%m-%d %H:%M:%S %Z')" >> pipeline_report.md
-          echo "" >> pipeline_report.md
-          echo "**Workflow Status:**" >> pipeline_report.md
-          echo "- fetch-papers: ${{ needs.fetch-papers.result }}" >> pipeline_report.md
-          echo "- ai-feedback: ${{ needs.ai-feedback.result }}" >> pipeline_report.md
-          echo "- category-filter: ${{ needs.category-filter.result }}" >> pipeline_report.md
-          echo "- generate-tex: ${{ needs.generate-tex.result }}" >> pipeline_report.md
-          echo "- compile-tex: ${{ needs.compile-tex.result }}" >> pipeline_report.md
-          echo "" >> pipeline_report.md
-          echo "**Generated Files:**" >> pipeline_report.md
-          echo "- latest.pdf" >> pipeline_report.md
-          
-      - name: Upload summary
-        uses: actions/upload-artifact@v4
-        with:
-          name: pipeline-summary
-          path: pipeline_report.md
-          retention-days: 7
+        echo "=== Pipeline Complete ==="
+    
+    - name: Upload results
+      uses: actions/upload-artifact@v4
+      with:
+        name: arxiv-daily-results
+        path: |
+          latest.pdf
+          latest.tex
+          data/
+          log/
+        retention-days: 7
