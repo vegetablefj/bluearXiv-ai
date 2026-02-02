@@ -36,25 +36,25 @@ jobs:
         pip install --upgrade pip
         pip install requests beautifulsoup4 openai
         
-    - name: Install minimal LaTeX (允许失败)
-      continue-on-error: true
-      run: |
-        echo "安装最小化LaTeX环境..."
-        sudo apt-get update
-        sudo apt-get install -y \
-          texlive-xetex \
-          texlive-latex-recommended \
-          latexmk \
-          texlive-lang-chinese \
-          fonts-noto-cjk-extra || echo "LaTeX安装有错误，但继续执行"
+#    - name: Install minimal LaTeX (允许失败)
+#      continue-on-error: true
+#      run: |
+#        echo "安装最小化LaTeX环境..."
+#        sudo apt-get update
+#        sudo apt-get install -y \
+#          texlive-xetex \
+#          texlive-latex-recommended \
+#          latexmk \
+#          texlive-lang-chinese \
+#          fonts-noto-cjk-extra || echo "LaTeX安装有错误，但继续执行"
         
-    - name: Fix Python script imports
-      run: |
-        # 检查并修复xelatex_compile.py中的导入
-        if grep -q "re\." scripts/xelatex_compile.py && ! grep -q "^import re" scripts/xelatex_compile.py; then
-          echo "修复re模块导入..."
-          sed -i '1s/^/import re\n/' scripts/xelatex_compile.py
-        fi
+#    - name: Fix Python script imports
+#      run: |
+#        # 检查并修复xelatex_compile.py中的导入
+#        if grep -q "re\." scripts/xelatex_compile.py && ! grep -q "^import re" scripts/xelatex_compile.py; then
+#          echo "修复re模块导入..."
+#          sed -i '1s/^/import re\n/' scripts/xelatex_compile.py
+#        fi
         
     - name: Create directories
       run: |
@@ -96,9 +96,9 @@ jobs:
         echo "步骤4: 生成TeX文件"
         cd scripts && python generate_tex.py || echo "生成TeX步骤有错误，但继续执行" && cd ..
         
-        # 编译PDF（允许失败）
-        echo "步骤5: 编译PDF"
-        cd scripts && python xelatex_compile.py --use-latexmk --verbose || echo "PDF编译失败，但继续执行" && cd ..
+#        # 编译PDF（允许失败）
+#        echo "步骤5: 编译PDF"
+#        cd scripts && python xelatex_compile.py --use-latexmk --verbose || echo "PDF编译失败，但继续执行" && cd ..
         
         echo "=== Pipeline Complete ==="
     
@@ -121,14 +121,14 @@ jobs:
           echo "✗ latest.tex 不存在"
         fi
         
-        echo "检查PDF文件:"
-        if [ -f "latest.pdf" ]; then
-          echo "✓ latest.pdf 存在"
-          pdf_size=$(stat -c%s latest.pdf 2>/dev/null || echo "unknown")
-          echo "PDF文件大小: $pdf_size 字节"
-        else
-          echo "✗ latest.pdf 不存在"
-        fi
+#        echo "检查PDF文件:"
+#        if [ -f "latest.pdf" ]; then
+#          echo "✓ latest.pdf 存在"
+#          pdf_size=$(stat -c%s latest.pdf 2>/dev/null || echo "unknown")
+#          echo "PDF文件大小: $pdf_size 字节"
+#        else
+#          echo "✗ latest.pdf 不存在"
+#        fi
         
         echo "检查数据目录:"
         if [ -d "data" ]; then
@@ -138,13 +138,13 @@ jobs:
           echo "✗ data目录不存在"
         fi
         
-        echo "检查日志目录:"
-        if [ -d "log" ]; then
-          echo "✓ log目录存在"
-          ls -la log/ || echo "无法列出日志目录"
-        else
-          echo "✗ log目录不存在"
-        fi
+#        echo "检查日志目录:"
+#        if [ -d "log" ]; then
+#          echo "✓ log目录存在"
+#          ls -la log/ || echo "无法列出日志目录"
+#        else
+#          echo "✗ log目录不存在"
+#        fi
     
     - name: Upload artifacts
       if: always()
@@ -152,10 +152,10 @@ jobs:
       with:
         name: arxiv-daily-$(date +%Y-%m-%d)
         path: |
-          latest.pdf
+#          latest.pdf
           latest.tex
           data/
-          log/
+#          log/
         retention-days: 7
     
     - name: Commit generated files
@@ -170,13 +170,13 @@ jobs:
         # 只添加实际存在的文件
         FILES_TO_COMMIT=""
         
-        if [ -f "latest.pdf" ]; then
-          git add latest.pdf
-          FILES_TO_COMMIT="$FILES_TO_COMMIT latest.pdf"
-          echo "✓ 添加 latest.pdf"
-        else
-          echo "⚠ 跳过 latest.pdf (文件不存在)"
-        fi
+#        if [ -f "latest.pdf" ]; then
+#          git add latest.pdf
+#          FILES_TO_COMMIT="$FILES_TO_COMMIT latest.pdf"
+#          echo "✓ 添加 latest.pdf"
+#        else
+#          echo "⚠ 跳过 latest.pdf (文件不存在)"
+#        fi
         
         if [ -f "latest.tex" ]; then
           git add latest.tex
@@ -215,10 +215,10 @@ jobs:
           # 提交更改
           COMMIT_MSG="自动生成: arXiv日报 $(date +%Y-%m-%d)"
           
-          # 检查是否有错误
-          if [ -f "log/xelatex_compile.log" ] && grep -q "❌" log/xelatex_compile.log; then
-            COMMIT_MSG="$COMMIT_MSG [包含错误]"
-          fi
+#          # 检查是否有错误
+#          if [ -f "log/xelatex_compile.log" ] && grep -q "❌" log/xelatex_compile.log; then
+#            COMMIT_MSG="$COMMIT_MSG [包含错误]"
+#          fi
           
           git commit -m "$COMMIT_MSG"
           
