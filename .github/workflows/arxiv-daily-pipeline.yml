@@ -1,5 +1,5 @@
 # .github/workflows/arxiv-daily-pipeline.yml
-name: arXiv Daily Paper Pipeline
+name: arXiv Daily Paper Pipeline (TeX Only)
 
 on:
   schedule:
@@ -36,26 +36,6 @@ jobs:
         pip install --upgrade pip
         pip install requests beautifulsoup4 openai
         
-#    - name: Install minimal LaTeX (允许失败)
-#      continue-on-error: true
-#      run: |
-#        echo "安装最小化LaTeX环境..."
-#        sudo apt-get update
-#        sudo apt-get install -y \
-#          texlive-xetex \
-#          texlive-latex-recommended \
-#          latexmk \
-#          texlive-lang-chinese \
-#          fonts-noto-cjk-extra || echo "LaTeX安装有错误，但继续执行"
-        
-#    - name: Fix Python script imports
-#      run: |
-#        # 检查并修复xelatex_compile.py中的导入
-#        if grep -q "re\." scripts/xelatex_compile.py && ! grep -q "^import re" scripts/xelatex_compile.py; then
-#          echo "修复re模块导入..."
-#          sed -i '1s/^/import re\n/' scripts/xelatex_compile.py
-#        fi
-        
     - name: Create directories
       run: |
         mkdir -p data/raw log config
@@ -68,7 +48,7 @@ jobs:
       run: |
         set +e  # 允许错误继续执行
         
-        echo "=== Starting arXiv Pipeline ==="
+        echo "=== Starting arXiv Pipeline (TeX Only) ==="
         
         # 抓取论文（可选跳过）
         if [ "${{ github.event.inputs.skip_fetch }}" != "true" ]; then
@@ -96,11 +76,7 @@ jobs:
         echo "步骤4: 生成TeX文件"
         cd scripts && python generate_tex.py || echo "生成TeX步骤有错误，但继续执行" && cd ..
         
-#        # 编译PDF（允许失败）
-#        echo "步骤5: 编译PDF"
-#        cd scripts && python xelatex_compile.py --use-latexmk --verbose || echo "PDF编译失败，但继续执行" && cd ..
-        
-        echo "=== Pipeline Complete ==="
+        echo "=== Pipeline Complete (仅生成TeX文件) ==="
     
     - name: Check what files were generated
       if: always()
@@ -121,15 +97,6 @@ jobs:
           echo "✗ latest.tex 不存在"
         fi
         
-#        echo "检查PDF文件:"
-#        if [ -f "latest.pdf" ]; then
-#          echo "✓ latest.pdf 存在"
-#          pdf_size=$(stat -c%s latest.pdf 2>/dev/null || echo "unknown")
-#          echo "PDF文件大小: $pdf_size 字节"
-#        else
-#          echo "✗ latest.pdf 不存在"
-#        fi
-        
         echo "检查数据目录:"
         if [ -d "data" ]; then
           echo "✓ data目录存在"
@@ -138,13 +105,13 @@ jobs:
           echo "✗ data目录不存在"
         fi
         
-#        echo "检查日志目录:"
-#        if [ -d "log" ]; then
-#          echo "✓ log目录存在"
-#          ls -la log/ || echo "无法列出日志目录"
-#        else
-#          echo "✗ log目录不存在"
-#        fi
+        echo "检查日志目录:"
+        if [ -d "log" ]; then
+          echo "✓ log目录存在"
+          ls -la log/ || echo "无法列出日志目录"
+        else
+          echo "✗ log目录不存在"
+        fi
     
     - name: Upload artifacts
       if: always()
@@ -152,10 +119,9 @@ jobs:
       with:
         name: arxiv-daily-$(date +%Y-%m-%d)
         path: |
-#          latest.pdf
           latest.tex
           data/
-#          log/
+          log/
         retention-days: 7
     
     - name: Commit generated files
@@ -169,14 +135,6 @@ jobs:
         
         # 只添加实际存在的文件
         FILES_TO_COMMIT=""
-        
-#        if [ -f "latest.pdf" ]; then
-#          git add latest.pdf
-#          FILES_TO_COMMIT="$FILES_TO_COMMIT latest.pdf"
-#          echo "✓ 添加 latest.pdf"
-#        else
-#          echo "⚠ 跳过 latest.pdf (文件不存在)"
-#        fi
         
         if [ -f "latest.tex" ]; then
           git add latest.tex
@@ -213,12 +171,7 @@ jobs:
           echo "没有文件更改，跳过提交"
         else
           # 提交更改
-          COMMIT_MSG="自动生成: arXiv日报 $(date +%Y-%m-%d)"
-          
-#          # 检查是否有错误
-#          if [ -f "log/xelatex_compile.log" ] && grep -q "❌" log/xelatex_compile.log; then
-#            COMMIT_MSG="$COMMIT_MSG [包含错误]"
-#          fi
+          COMMIT_MSG="自动生成: arXiv日报 $(date +%Y-%m-%d) [仅TeX文件]"
           
           git commit -m "$COMMIT_MSG"
           
@@ -232,21 +185,10 @@ jobs:
     - name: Create workflow summary
       if: always()
       run: |
-        echo "## arXiv Daily Paper Pipeline Report" >> $GITHUB_STEP_SUMMARY
+        echo "## arXiv Daily Paper Pipeline Report (TeX Only)" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "**执行时间:** $(date '+%Y-%m-%d %H:%M:%S %Z')" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
-        
-        # 检查生成的文件
-        if [ -f "latest.pdf" ]; then
-          pdf_size=$(stat -c%s latest.pdf 2>/dev/null || echo "unknown")
-          echo "✅ **PDF生成成功**" >> $GITHUB_STEP_SUMMARY
-          echo "- 文件: latest.pdf" >> $GITHUB_STEP_SUMMARY
-          echo "- 大小: $pdf_size 字节" >> $GITHUB_STEP_SUMMARY
-        else
-          echo "❌ **PDF生成失败**" >> $GITHUB_STEP_SUMMARY
-          echo "- 未生成PDF文件" >> $GITHUB_STEP_SUMMARY
-        fi
         
         if [ -f "latest.tex" ]; then
           tex_size=$(stat -c%s latest.tex 2>/dev/null || echo "unknown")
@@ -262,6 +204,7 @@ jobs:
         echo "**工作流状态:**" >> $GITHUB_STEP_SUMMARY
         echo "- 总体结果: ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
         echo "- 生成的文件已提交到仓库" >> $GITHUB_STEP_SUMMARY
+        echo "- 注: 当前仅生成TeX文件，PDF编译已禁用" >> $GITHUB_STEP_SUMMARY
         
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "---" >> $GITHUB_STEP_SUMMARY
