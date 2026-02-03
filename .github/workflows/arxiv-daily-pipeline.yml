@@ -121,7 +121,7 @@ jobs:
         path: |
           latest.tex
           data/
-          log/
+          log/  # 仍然上传到artifacts，但不提交到git仓库
         retention-days: 7
     
     - name: Commit generated files
@@ -133,7 +133,7 @@ jobs:
         
         echo "=== 准备提交生成的文件 ==="
         
-        # 只添加实际存在的文件
+        # 只添加实际存在的文件（不添加被.gitignore忽略的log目录）
         FILES_TO_COMMIT=""
         
         if [ -f "latest.tex" ]; then
@@ -152,13 +152,15 @@ jobs:
           echo "⚠ 跳过 data/ (目录不存在)"
         fi
         
-        if [ -d "log" ]; then
-          git add log/
-          FILES_TO_COMMIT="$FILES_TO_COMMIT log/"
-          echo "✓ 添加 log/ 目录"
-        else
-          echo "⚠ 跳过 log/ (目录不存在)"
-        fi
+        # 不添加log目录，因为它在.gitignore中
+        # 如果您确实需要提交log文件，请取消注释下面的代码并使用git add -f
+        # if [ -d "log" ]; then
+        #   git add -f log/  # 使用-f强制添加
+        #   FILES_TO_COMMIT="$FILES_TO_COMMIT log/"
+        #   echo "✓ 强制添加 log/ 目录"
+        # else
+        #   echo "⚠ 跳过 log/ (目录不存在)"
+        # fi
         
         # 检查是否有文件要提交
         if [ -z "$FILES_TO_COMMIT" ]; then
