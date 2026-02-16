@@ -9,7 +9,8 @@ import math
 # 获取项目根目录
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-
+# 从环境变量读取模型名称，如果没有则使用默认值
+MODEL_NAME = os.getenv('AI_MODEL_NAME', 'Qwen/Qwen3-8B')
 
 def get_file_paths():
     """获取所有必要的文件路径"""
@@ -197,7 +198,7 @@ def process_all_papers(batch_size: int = 5) -> Tuple[List[Dict], int]:
             try:
                 print("调用API生成总结...")
                 response = client.chat.completions.create(
-                    model="Qwen/Qwen3-Coder-Next",
+                    model=MODEL_NAME,
                     messages=messages,
                     temperature=0.1,
                     max_tokens=300,

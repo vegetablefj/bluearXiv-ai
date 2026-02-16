@@ -1,5 +1,5 @@
 # .github/workflows/arxiv-daily-pipeline.yml
-name: arXiv Daily Paper Pipeline (TeX Only)
+name: arXiv Daily Paper Pipeline (TeX + HTML)
 
 on:
   schedule:
@@ -14,17 +14,27 @@ on:
         description: '测试模式'
         required: false
         default: 'false'
+      ai_model_name:
+        description: 'AI模型名称（可选）'
+        required: false
+        default: 'Qwen/Qwen3-8B'
+        type: string
 
 env:
   PYTHON_VERSION: '3.10'
+  DATE: ${{ github.event.inputs.date || format(fromISO8601(''), 'yyyy-MM-dd') }}
 
 jobs:
   process-papers:
     runs-on: ubuntu-latest
+    env:
+      AI_MODEL_NAME: ${{ inputs.ai_model_name || 'Qwen/Qwen3-8B' }}
     
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # 获取完整历史，便于推送
     
     - name: Set up Python
       uses: actions/setup-python@v4
@@ -34,11 +44,12 @@ jobs:
     - name: Install Python dependencies
       run: |
         pip install --upgrade pip
-        pip install requests beautifulsoup4 openai
-        
+        pip install -r requirements.txt
+    
     - name: Create directories
       run: |
-        mkdir -p data/raw log config
+        mkdir -p data/raw docs
+        mkdir -p log 2>/dev/null || true
     
     - name: Run pipeline (允许部分失败)
       continue-on-error: true
@@ -48,7 +59,9 @@ jobs:
       run: |
         set +e  # 允许错误继续执行
         
-        echo "=== Starting arXiv Pipeline (TeX Only) ==="
+        echo "=== Starting arXiv Pipeline (TeX + HTML) ==="
+        CURRENT_DATE=$(date +%Y-%m-%d)
+        echo "当前日期: $CURRENT_DATE"
         
         # 抓取论文（可选跳过）
         if [ "${{ github.event.inputs.skip_fetch }}" != "true" ]; then
@@ -76,7 +89,11 @@ jobs:
         echo "步骤4: 生成TeX文件"
         cd scripts && python generate_tex.py || echo "生成TeX步骤有错误，但继续执行" && cd ..
         
-        echo "=== Pipeline Complete (仅生成TeX文件) ==="
+        # 生成HTML
+        echo "步骤5: 生成HTML文件"
+        cd scripts && python generate_html.py || echo "生成HTML步骤有错误，但继续执行" && cd ..
+        
+        echo "=== Pipeline Complete (生成TeX和HTML文件) ==="
     
     - name: Check what files were generated
       if: always()
@@ -87,14 +104,21 @@ jobs:
         ls -la
         
         echo "检查TeX文件:"
-        if [ -f "latest.tex" ]; then
-          echo "✓ latest.tex 存在"
-          tex_size=$(stat -c%s latest.tex 2>/dev/null || echo "unknown")
-          echo "TeX文件大小: $tex_size 字节"
-          echo "前10行内容:"
-          head -10 latest.tex
+        if [ -f "data/raw/daily_feedback_tex/daily_feedback_*.tex" ]; then
+          echo "✓ TeX文件存在"
+          echo "最新的TeX文件:"
+          ls -la data/raw/daily_feedback_tex/daily_feedback_*.tex | tail -1
         else
-          echo "✗ latest.tex 不存在"
+          echo "✗ TeX文件不存在"
+        fi
+        
+        echo "检查HTML文件:"
+        if [ -d "docs" ]; then
+          echo "✓ docs目录存在"
+          echo "HTML文件:"
+          ls -la docs/*.html 2>/dev/null || echo "没有HTML文件"
+        else
+          echo "✗ docs目录不存在"
         fi
         
         echo "检查数据目录:"
@@ -104,14 +128,125 @@ jobs:
         else
           echo "✗ data目录不存在"
         fi
+    
+    - name: Setup Git
+      if: always()
+      run: |
+        # 配置Git用户
+        git config --local user.email "github-actions[bot]@users.noreply.github.com"
+        git config --local user.name "github-actions[bot]"
         
-        echo "检查日志目录:"
-        if [ -d "log" ]; then
-          echo "✓ log目录存在"
-          ls -la log/ || echo "无法列出日志目录"
+        # 拉取最新更改，避免冲突
+        git pull origin main --rebase || true
+    
+    - name: Commit generated files
+      if: always()
+      id: commit
+      run: |
+        echo "=== 准备提交生成的文件 ==="
+        
+        # 获取当前日期
+        CURRENT_DATE=$(date +%Y-%m-%d)
+        echo "当前日期: $CURRENT_DATE"
+        
+        # 只添加实际存在的文件
+        FILES_TO_COMMIT=""
+        
+        # 1. 添加TeX文件（如果存在）
+        TEX_FILE="data/raw/daily_feedback_tex/daily_feedback_${CURRENT_DATE}.tex"
+        if [ -f "$TEX_FILE" ]; then
+          # 复制一份到根目录并重命名为latest.tex
+          cp "$TEX_FILE" "latest.tex"
+          git add latest.tex
+          FILES_TO_COMMIT="$FILES_TO_COMMIT latest.tex"
+          echo "✓ 添加 latest.tex"
         else
-          echo "✗ log目录不存在"
+          echo "⚠ 跳过 TeX 文件 (文件不存在: $TEX_FILE)"
+          # 检查是否有其他TeX文件
+          LATEST_TEX=$(find data/raw/daily_feedback_tex -name "daily_feedback_*.tex" -type f | sort | tail -1)
+          if [ -n "$LATEST_TEX" ]; then
+            cp "$LATEST_TEX" "latest.tex"
+            git add latest.tex
+            FILES_TO_COMMIT="$FILES_TO_COMMIT latest.tex"
+            echo "✓ 添加最新TeX文件: $(basename $LATEST_TEX) -> latest.tex"
+          fi
         fi
+        
+        # 2. 添加HTML文件（如果存在）
+        if [ -d "docs" ]; then
+          # 确保docs目录存在.gitkeep或至少一个文件
+          if [ ! -f "docs/.gitkeep" ] && [ -z "$(ls -A docs/ 2>/dev/null)" ]; then
+            touch docs/.gitkeep
+          fi
+          
+          git add docs/
+          FILES_TO_COMMIT="$FILES_TO_COMMIT docs/"
+          echo "✓ 添加 docs/ 目录"
+          echo "docs目录中的文件:"
+          ls -la docs/ || echo "无法列出docs目录"
+        else
+          echo "⚠ 跳过 docs/ (目录不存在)"
+        fi
+        
+        # 3. 添加data目录中的JSON文件（如果存在）
+        if [ -d "data" ]; then
+          # 只添加JSON文件，不添加被.gitignore忽略的文件
+          find data/ -name "*.json" -type f -exec git add {} + 2>/dev/null || true
+          FILES_TO_COMMIT="$FILES_TO_COMMIT data/*.json"
+          echo "✓ 添加 data/ 目录中的JSON文件"
+        else
+          echo "⚠ 跳过 data/ (目录不存在)"
+        fi
+        
+        # 检查是否有文件要提交
+        if [ -z "$FILES_TO_COMMIT" ]; then
+          echo "❌ 没有文件可提交"
+          echo "changed=false" >> $GITHUB_OUTPUT
+          exit 0
+        fi
+        
+        # 检查是否有更改
+        if git diff --cached --quiet; then
+          echo "没有文件更改，跳过提交"
+          echo "changed=false" >> $GITHUB_OUTPUT
+        else
+          # 提交更改
+          COMMIT_MSG="自动生成: arXiv日报 $(date +%Y-%m-%d) [TeX + HTML]"
+          
+          git commit -m "$COMMIT_MSG"
+          echo "changed=true" >> $GITHUB_OUTPUT
+          echo "✓ 准备提交文件: $FILES_TO_COMMIT"
+        fi
+    
+    - name: Push changes
+      if: steps.commit.outputs.changed == 'true'
+      run: |
+        echo "=== 推送更改到仓库 ==="
+        
+        # 尝试推送，最多重试3次
+        MAX_RETRIES=3
+        RETRY_COUNT=0
+        
+        while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+          echo "尝试推送 (第 $((RETRY_COUNT+1)) 次)..."
+          
+          # 拉取最新更改，避免冲突
+          git pull origin main --rebase || echo "拉取失败，继续推送"
+          
+          if git push; then
+            echo "✓ 推送成功"
+            break
+          else
+            RETRY_COUNT=$((RETRY_COUNT+1))
+            if [ $RETRY_COUNT -lt $MAX_RETRIES ]; then
+              echo "推送失败，等待10秒后重试..."
+              sleep 10
+            else
+              echo "❌ 推送失败，已重试 $MAX_RETRIES 次"
+              exit 1
+            fi
+          fi
+        done
     
     - name: Upload artifacts
       if: always()
@@ -120,79 +255,27 @@ jobs:
         name: arxiv-daily-$(date +%Y-%m-%d)
         path: |
           latest.tex
-          data/
-          log/  # 仍然上传到artifacts，但不提交到git仓库
+          docs/
+          data/raw/*.json
         retention-days: 7
-    
-    - name: Commit generated files
-      if: always()
-      run: |
-        # 配置Git
-        git config --local user.email "github-actions[bot]@users.noreply.github.com"
-        git config --local user.name "github-actions[bot]"
-        
-        echo "=== 准备提交生成的文件 ==="
-        
-        # 只添加实际存在的文件（不添加被.gitignore忽略的log目录）
-        FILES_TO_COMMIT=""
-        
-        if [ -f "latest.tex" ]; then
-          git add latest.tex
-          FILES_TO_COMMIT="$FILES_TO_COMMIT latest.tex"
-          echo "✓ 添加 latest.tex"
-        else
-          echo "⚠ 跳过 latest.tex (文件不存在)"
-        fi
-        
-        if [ -d "data" ]; then
-          git add data/
-          FILES_TO_COMMIT="$FILES_TO_COMMIT data/"
-          echo "✓ 添加 data/ 目录"
-        else
-          echo "⚠ 跳过 data/ (目录不存在)"
-        fi
-        
-        # 不添加log目录，因为它在.gitignore中
-        # 如果您确实需要提交log文件，请取消注释下面的代码并使用git add -f
-        # if [ -d "log" ]; then
-        #   git add -f log/  # 使用-f强制添加
-        #   FILES_TO_COMMIT="$FILES_TO_COMMIT log/"
-        #   echo "✓ 强制添加 log/ 目录"
-        # else
-        #   echo "⚠ 跳过 log/ (目录不存在)"
-        # fi
-        
-        # 检查是否有文件要提交
-        if [ -z "$FILES_TO_COMMIT" ]; then
-          echo "❌ 没有文件可提交"
-          exit 0
-        fi
-        
-        # 检查是否有更改
-        if git diff --cached --quiet; then
-          echo "没有文件更改，跳过提交"
-        else
-          # 提交更改
-          COMMIT_MSG="自动生成: arXiv日报 $(date +%Y-%m-%d) [仅TeX文件]"
-          
-          git commit -m "$COMMIT_MSG"
-          
-          # 推送到仓库
-          echo "推送更改到仓库..."
-          git push || echo "推送失败，但继续执行"
-          
-          echo "✓ 文件已提交到仓库: $FILES_TO_COMMIT"
-        fi
     
     - name: Create workflow summary
       if: always()
       run: |
-        echo "## arXiv Daily Paper Pipeline Report (TeX Only)" >> $GITHUB_STEP_SUMMARY
+        echo "## arXiv Daily Paper Pipeline Report (TeX + HTML)" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "**执行时间:** $(date '+%Y-%m-%d %H:%M:%S %Z')" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         
-        if [ -f "latest.tex" ]; then
+        CURRENT_DATE=$(date +%Y-%m-%d)
+        TEX_FILE="data/raw/daily_feedback_tex/daily_feedback_${CURRENT_DATE}.tex"
+        
+        if [ -f "$TEX_FILE" ]; then
+          tex_size=$(stat -c%s "$TEX_FILE" 2>/dev/null || echo "unknown")
+          echo "✅ **TeX文件生成成功**" >> $GITHUB_STEP_SUMMARY
+          echo "- 文件: $TEX_FILE" >> $GITHUB_STEP_SUMMARY
+          echo "- 大小: $tex_size 字节" >> $GITHUB_STEP_SUMMARY
+        elif [ -f "latest.tex" ]; then
           tex_size=$(stat -c%s latest.tex 2>/dev/null || echo "unknown")
           echo "✅ **TeX文件生成成功**" >> $GITHUB_STEP_SUMMARY
           echo "- 文件: latest.tex" >> $GITHUB_STEP_SUMMARY
@@ -203,10 +286,29 @@ jobs:
         fi
         
         echo "" >> $GITHUB_STEP_SUMMARY
+        
+        if [ -d "docs" ]; then
+          html_files=$(find docs -name "*.html" -type f | wc -l)
+          if [ $html_files -gt 0 ]; then
+            echo "✅ **HTML文件生成成功**" >> $GITHUB_STEP_SUMMARY
+            echo "- 目录: docs/" >> $GITHUB_STEP_SUMMARY
+            echo "- HTML文件数量: $html_files" >> $GITHUB_STEP_SUMMARY
+            echo "- 最新HTML文件:" >> $GITHUB_STEP_SUMMARY
+            find docs -name "daily_*.html" -type f | sort | tail -1 | xargs basename | sed 's/^/- /' >> $GITHUB_STEP_SUMMARY
+          else
+            echo "⚠ **HTML目录存在但无HTML文件**" >> $GITHUB_STEP_SUMMARY
+            echo "- 目录: docs/ (空)" >> $GITHUB_STEP_SUMMARY
+          fi
+        else
+          echo "❌ **HTML文件生成失败**" >> $GITHUB_STEP_SUMMARY
+          echo "- 未生成HTML文件" >> $GITHUB_STEP_SUMMARY
+        fi
+        
+        echo "" >> $GITHUB_STEP_SUMMARY
         echo "**工作流状态:**" >> $GITHUB_STEP_SUMMARY
         echo "- 总体结果: ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
         echo "- 生成的文件已提交到仓库" >> $GITHUB_STEP_SUMMARY
-        echo "- 注: 当前仅生成TeX文件，PDF编译已禁用" >> $GITHUB_STEP_SUMMARY
+        echo "- 包含: TeX文件 + HTML文件" >> $GITHUB_STEP_SUMMARY
         
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "---" >> $GITHUB_STEP_SUMMARY
