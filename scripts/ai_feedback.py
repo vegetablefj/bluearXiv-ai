@@ -197,7 +197,7 @@ def process_all_papers(batch_size: int = 5) -> Tuple[List[Dict], int]:
             try:
                 print("调用API生成总结...")
                 response = client.chat.completions.create(
-                    model="deepseek-ai/DeepSeek-V3.2",
+                    model="deepseek-ai/DeepSeek-R1-0528",
                     messages=messages,
                     temperature=0.1,
                     max_tokens=300,
