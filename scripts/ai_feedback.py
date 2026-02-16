@@ -202,8 +202,7 @@ def process_all_papers(batch_size: int = 5) -> Tuple[List[Dict], int]:
                     messages=messages,
                     temperature=0.1,
                     max_tokens=300,
-                    timeout=30,
-                    enable_thinking=False
+                    timeout=30
                 )
                 
                 # 解析响应
