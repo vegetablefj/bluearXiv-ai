@@ -426,29 +426,30 @@ def scan_existing_daily_files() -> List[Dict[str, Any]]:
         match = re.search(r'daily_(\d{4}-\d{2}-\d{2})\.html$', file_path.name)
         if match:
             date_str = match.group(1)
-            file_stats = file_path.stat()
-            
-            # 获取文件大小和修改时间
-            file_size = file_stats.st_size / 1024  # KB
-            modified_time = datetime.datetime.fromtimestamp(file_stats.st_mtime)
             
             # 读取文件内容提取统计信息
             with open(file_path, 'r', encoding='utf-8') as f:
                 content = f.read()
             
             # 从HTML中提取统计信息
-            total_match = re.search(r'总计.*?counter-value[^>]*?>(\d+)<', content)
+            total_match = re.search(r'总计.*?counter-value[^>]*?>(\d+)<', content, re.DOTALL)
             total_papers = int(total_match.group(1)) if total_match else 0
             
             selected_match = re.findall(r'selection-badge[^>]*?>⭐ 精选<', content)
             selected_count = len(selected_match)
             
-            # 提取各学科计数
+            # 修复正则表达式：更精确地提取学科和计数
             category_counts = {}
-            category_matches = re.findall(r'counter-category[^>]*?>([^<]+)<.*?counter-value[^>]*?>(\d+)<', content, re.DOTALL)
+            # 使用更精确的正则表达式，避免匹配到空学科
+            category_matches = re.findall(
+                r'<div\s+class="counter-category"[^>]*>([^<]+)</div>\s*<div\s+class="counter-value"[^>]*>(\d+)</div>',
+                content
+            )
+            
             for cat, count in category_matches:
-                if cat != '总计':  # 排除总计
-                    category_counts[cat.strip()] = int(count)
+                cat = cat.strip()
+                if cat and cat != '总计':  # 排除空字符串和总计
+                    category_counts[cat] = int(count)
             
             daily_files.append({
                 'date': date_str,
@@ -456,8 +457,6 @@ def scan_existing_daily_files() -> List[Dict[str, Any]]:
                 'total_papers': total_papers,
                 'selected_count': selected_count,
                 'category_counts': category_counts,
-                'modified_time': modified_time,
-                'file_size_kb': round(file_size, 1)
             })
     
     return daily_files
@@ -499,7 +498,6 @@ def generate_index_html() -> bool:
             <div class="stats">
                 <div class="stat-item">总论文数: {daily_info['total_papers']}</div>
                 <div class="stat-item">精选论文: {daily_info['selected_count']}</div>
-                <div class="stat-item">文件大小: {daily_info['file_size_kb']} KB</div>
                 <div class="category-tags">
                     {''.join(category_tags)}
                 </div>
