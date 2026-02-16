@@ -10,7 +10,7 @@ import math
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # 从环境变量读取模型名称，如果没有则使用默认值
-MODEL_NAME = os.getenv('AI_MODEL_NAME', 'Qwen/Qwen3-8B')
+MODEL_NAME = MODEL_NAME = os.getenv('AI_MODEL_NAME', 'deepseek-chat')
 
 def get_file_paths():
     """获取所有必要的文件路径"""
@@ -112,9 +112,9 @@ def process_all_papers(batch_size: int = 5) -> Tuple[List[Dict], int]:
     deepseek_key = os.environ.get('DEEPSEEK_API_KEY')
     modelscope_key = os.environ.get('MODEL_SCOPE_API_KEY')
     
-    client = openai.OpenAI(
-        api_key=modelscope_key,  # 替换为你的API密钥
-        base_url="https://api-inference.modelscope.cn/v1/"
+    client = OpenAI(
+    api_key=api_key,
+    base_url="https://api.deepseek.com",  # DeepSeek API 端点
     )
     
     # 系统提示
