@@ -1,8 +1,9 @@
 import os
 import sys
 import json
-import openai
-from typing import List, Dict, Tuple
+from openai import OpenAI
+from pathlib import Path
+from typing import List, Dict, Any
 import time
 import math
 
