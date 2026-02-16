@@ -114,7 +114,7 @@ def process_all_papers(batch_size: int = 5) -> Tuple[List[Dict], int]:
     modelscope_key = os.environ.get('MODEL_SCOPE_API_KEY')
     
     client = OpenAI(
-    api_key=api_key,
+    api_key=deepseek_key,
     base_url="https://api.deepseek.com",  # DeepSeek API 端点
     )
     
