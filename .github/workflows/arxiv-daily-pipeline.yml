@@ -19,10 +19,14 @@ on:
         required: false
         default: 'Qwen/Qwen3-8B'
         type: string
+      date:
+        description: '指定日期（格式：YYYY-MM-DD，默认为今天）'
+        required: false
+        type: string
 
 env:
   PYTHON_VERSION: '3.10'
-  DATE: ${{ github.event.inputs.date || format(fromISO8601(''), 'yyyy-MM-dd') }}
+  # DATE 变量将在步骤中设置
 
 jobs:
   process-papers:
@@ -60,7 +64,13 @@ jobs:
         set +e  # 允许错误继续执行
         
         echo "=== Starting arXiv Pipeline (TeX + HTML) ==="
-        CURRENT_DATE=$(date +%Y-%m-%d)
+        
+        # 设置日期：如果提供了输入日期则使用，否则使用今天
+        if [ -n "${{ github.event.inputs.date }}" ]; then
+          CURRENT_DATE="${{ github.event.inputs.date }}"
+        else
+          CURRENT_DATE=$(date +%Y-%m-%d)
+        fi
         echo "当前日期: $CURRENT_DATE"
         
         # 抓取论文（可选跳过）
@@ -145,8 +155,12 @@ jobs:
       run: |
         echo "=== 准备提交生成的文件 ==="
         
-        # 获取当前日期
-        CURRENT_DATE=$(date +%Y-%m-%d)
+        # 获取当前日期（与前面一致）
+        if [ -n "${{ github.event.inputs.date }}" ]; then
+          CURRENT_DATE="${{ github.event.inputs.date }}"
+        else
+          CURRENT_DATE=$(date +%Y-%m-%d)
+        fi
         echo "当前日期: $CURRENT_DATE"
         
         # 只添加实际存在的文件
@@ -267,7 +281,13 @@ jobs:
         echo "**执行时间:** $(date '+%Y-%m-%d %H:%M:%S %Z')" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         
-        CURRENT_DATE=$(date +%Y-%m-%d)
+        # 获取当前日期（与前面一致）
+        if [ -n "${{ github.event.inputs.date }}" ]; then
+          CURRENT_DATE="${{ github.event.inputs.date }}"
+        else
+          CURRENT_DATE=$(date +%Y-%m-%d)
+        fi
+        
         TEX_FILE="data/raw/daily_feedback_tex/daily_feedback_${CURRENT_DATE}.tex"
         
         if [ -f "$TEX_FILE" ]; then
