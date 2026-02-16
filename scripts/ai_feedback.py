@@ -3,7 +3,7 @@ import sys
 import json
 from openai import OpenAI
 from pathlib import Path
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Tuple
 import time
 import math
 
