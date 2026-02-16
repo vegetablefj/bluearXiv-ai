@@ -30,6 +30,8 @@ env:
 
 jobs:
   process-papers:
+    permissions:
+      contents: write
     runs-on: ubuntu-latest
     env:
       AI_MODEL_NAME: ${{ inputs.ai_model_name || 'Qwen/Qwen3-8B' }}
@@ -145,10 +147,8 @@ jobs:
         # 配置Git用户
         git config --local user.email "github-actions[bot]@users.noreply.github.com"
         git config --local user.name "github-actions[bot]"
-        
-        # 拉取最新更改，避免冲突
-        git pull origin main --rebase || true
-    
+        # 注意：此处暂时不执行 `git pull`
+
     - name: Commit generated files
       if: always()
       id: commit
@@ -225,11 +225,20 @@ jobs:
           echo "changed=false" >> $GITHUB_OUTPUT
         else
           # 提交更改
-          COMMIT_MSG="自动生成: arXiv日报 $(date +%Y-%m-%d) [TeX + HTML]"
-          
-          git commit -m "$COMMIT_MSG"
+          git commit -m "自动生成: arXiv日报 $CURRENT_DATE [TeX + HTML]" || echo "没有新内容可提交"
+        
+        # 在提交本地更改后，再拉取远程更新，尝试变基
+        echo "正在拉取远程最新更改并变基..."
+        git pull origin main --rebase --autostash || echo "拉取/变基失败，继续尝试推送"
+        
+        # 判断是否有需要推送的提交
+        if git log origin/main..HEAD --oneline | grep -q .; then
+          echo "检测到本地有新提交，将尝试推送"
           echo "changed=true" >> $GITHUB_OUTPUT
-          echo "✓ 准备提交文件: $FILES_TO_COMMIT"
+        else
+          echo "本地没有新提交，无需推送"
+          echo "changed=false" >> $GITHUB_OUTPUT
+        fi
         fi
     
     - name: Push changes
