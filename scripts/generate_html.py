@@ -436,7 +436,7 @@ def scan_existing_daily_files() -> List[Dict[str, Any]]:
             total_papers = int(total_match.group(1)) if total_match else 0
             
             selected_match = re.findall(r'selection-badge[^>]*?>⭐ 精选<', content)
-            selected_count = len(selected_match)
+            selected_count = len(selected_match) // 2
             
             # 修复正则表达式：更精确地提取学科和计数
             category_counts = {}
