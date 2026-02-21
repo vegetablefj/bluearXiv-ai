@@ -26,10 +26,11 @@
 ## 配置说明
 
 1.  **学科与关键词**：
-    - 在 `config/categories.txt` 中定义跟踪的学科类别。
+    - 在 `config/categories.txt` 中定义跟踪的学科类别（每行一个）。
     - 在 `config/keywords.txt` 中添加筛选关键词（每行一个）。
 
 2.  **API 密钥**（用于 GitHub Actions）：
     在仓库设置中添加以下 Secrets：
     - `DEEPSEEK_API_KEY`
     - `MODEL_SCOPE_API_KEY`
+    - 目前仅支持使用DeepSeek API
