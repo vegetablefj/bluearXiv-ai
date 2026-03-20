@@ -1,0 +1,768 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>bluearXiv-ai - 2026-03-20</title>
+    <!-- KaTeX for LaTeX rendering -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+    <style>
+        body {
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.5;
+            color: #333;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 15px;
+            background-color: #f8f9fa;
+            font-size: 14px;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #4a6fa5;
+        }
+        .header h1 {
+            color: #2c3e50;
+            font-size: 1.6em;
+            margin-bottom: 8px;
+        }
+        .header .date {
+            color: #7f8c8d;
+            font-size: 1.1em;
+            margin-bottom: 10px;
+        }
+        .nav-links {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .nav-link {
+            color: #2980b9;
+            text-decoration: none;
+            margin: 0 10px;
+            font-weight: bold;
+            font-size: 0.95em;
+        }
+        .nav-link:hover {
+            text-decoration: underline;
+        }
+        .config-section {
+            background: white;
+            border-radius: 6px;
+            padding: 15px;
+            margin-bottom: 20px;
+            box-shadow: 0 1px 5px rgba(0,0,0,0.1);
+        }
+        .config-title {
+            font-size: 1.1em;
+            color: #2c3e50;
+            margin-top: 0;
+            margin-bottom: 8px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 5px;
+        }
+        .config-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        .config-item {
+            display: inline-block;
+            background-color: #e8f4fc;
+            color: #2c3e50;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 0.85em;
+            margin: 0 5px 5px 0;
+        }
+        .section {
+            background: white;
+            border-radius: 6px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 1px 5px rgba(0,0,0,0.1);
+        }
+        .section-title {
+            color: #2c3e50;
+            font-size: 1.4em;
+            margin-top: 0;
+            margin-bottom: 15px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #eee;
+        }
+        .counter-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 12px;
+            margin-bottom: 15px;
+        }
+        .counter-item {
+            background-color: #f1f8ff;
+            padding: 12px;
+            border-radius: 5px;
+            text-align: center;
+        }
+        .counter-category {
+            font-size: 1em;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        .counter-value {
+            font-size: 1.5em;
+            color: #4a6fa5;
+            margin: 8px 0;
+        }
+        .category-section {
+            margin-bottom: 30px;
+        }
+        .category-title {
+            color: #2c3e50;
+            font-size: 1.3em;
+            margin-top: 0;
+            margin-bottom: 15px;
+            padding-bottom: 5px;
+            border-bottom: 2px solid #4a6fa5;
+        }
+        .paper-list {
+            margin: 0;
+            padding: 0;
+        }
+        .paper-item {
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #eee;
+        }
+        .paper-item:last-child {
+            border-bottom: none;
+        }
+        .paper-title {
+            font-size: 1.2em;
+            color: #2c3e50;
+            margin-bottom: 6px;
+            line-height: 1.3;
+        }
+        .paper-title a {
+            color: #2c3e50;
+            text-decoration: none;
+        }
+        .paper-title a:hover {
+            color: #4a6fa5;
+            text-decoration: underline;
+        }
+        .paper-authors {
+            color: #666;
+            font-size: 0.95em;
+            margin-bottom: 6px;
+            font-style: italic;
+        }
+        .paper-categories {
+            margin-bottom: 10px;
+        }
+        .category-tag {
+            display: inline-block;
+            background-color: #e8f4fc;
+            color: #2c3e50;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 0.8em;
+            margin-right: 4px;
+        }
+        .paper-comment {
+            background-color: #f9f9f9;
+            padding: 12px;
+            border-radius: 5px;
+            border-left: 3px solid #4a6fa5;
+            font-size: 0.95em;
+            line-height: 1.5;
+        }
+        .selection-badge {
+            display: inline-block;
+            background-color: #ffeaa7;
+            color: #d35400;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 0.8em;
+            font-weight: bold;
+            margin-left: 8px;
+        }
+        .back-to-top {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background-color: #4a6fa5;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 50%;
+            text-decoration: none;
+            font-size: 1em;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+        }
+        .back-to-top:hover {
+            background-color: #3a5a80;
+        }
+        .footnote {
+            font-size: 0.85em;
+            color: #888;
+            margin-top: 20px;
+            padding-top: 15px;
+            border-top: 1px solid #ddd;
+            line-height: 1.4;
+        }
+        @media (max-width: 768px) {
+            .counter-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+            .header h1 {
+                font-size: 1.4em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>bluearXiv-ai 论文精选</h1>
+        <div class="date">2026-03-20</div>
+        <div class="nav-links">
+            <a href="index.html" class="nav-link">返回首页</a>
+            <a href="#counter" class="nav-link">论文统计</a>
+            <a href="#selection" class="nav-link">精选论文</a>
+            <a href="#papers" class="nav-link">所有论文</a>
+        </div>
+    </div>
+    
+    <!-- 特定学科和关键词列表 -->
+    <div class="config-section">
+        <h3 class="config-title">📚 跟踪学科 (Categories)</h3>
+        <ul class="config-list">
+            <li class="config-item">math.AG</li>
+<li class="config-item">math.RT</li>
+<li class="config-item">math.QA</li>
+        </ul>
+    </div>
+    <div class="config-section">
+        <h3 class="config-title">🔍 筛选关键词 (Keywords)</h3>
+        <ul class="config-list">
+            <li class="config-item">hyperkahler</li>
+<li class="config-item">cubic fourfold</li>
+<li class="config-item">Coulomb branch</li>
+<li class="config-item">stability condition</li>
+<li class="config-item">quantum cohomology</li>
+<li class="config-item">automorphism group</li>
+<li class="config-item">Hodge structure</li>
+<li class="config-item">Coulumb branch</li>
+<li class="config-item">hyperplane arrangement</li>
+<li class="config-item">quantum group</li>
+<li class="config-item">geometric langlands program</li>
+<li class="config-item">quiver gauge theory</li>
+<li class="config-item">cluster algebra</li>
+<li class="config-item">Yangian</li>
+<li class="config-item">P=W conjecture</li>
+<li class="config-item">Ngo's support theorem</li>
+<li class="config-item">hypergeometric function</li>
+<li class="config-item">rationality of varieties</li>
+<li class="config-item">Hecke algebra/category</li>
+<li class="config-item">ind-geometry</li>
+<li class="config-item">coherent sheaf</li>
+<li class="config-item">characteristic stack</li>
+<li class="config-item">K3 surface</li>
+<li class="config-item">period map</li>
+        </ul>
+    </div>
+    
+    <!-- 论文统计部分 -->
+    <section id="counter" class="section">
+        <h2 class="section-title">📊 论文统计</h2>
+        <div class="counter-grid">
+            
+        <div class="counter-item">
+            <div class="counter-category">math.AG</div>
+            <div class="counter-value">6</div>
+        </div>
+        
+
+        <div class="counter-item">
+            <div class="counter-category">math.RT</div>
+            <div class="counter-value">4</div>
+        </div>
+        
+
+        <div class="counter-item">
+            <div class="counter-category">math.QA</div>
+            <div class="counter-value">1</div>
+        </div>
+        
+
+        <div class="counter-item">
+            <div class="counter-category">others</div>
+            <div class="counter-value">10</div>
+        </div>
+        
+
+    <div class="counter-item" style="background-color: #e8f4fc;">
+        <div class="counter-category" style="font-weight: bold;">总计</div>
+        <div class="counter-value" style="color: #2c3e50;">21</div>
+    </div>
+    
+        </div>
+    </section>
+    
+    <!-- 精选论文部分 -->
+    <section id="selection" class="section">
+        <h2 class="section-title">⭐ 精选论文</h2>
+        <div class="paper-list">
+            <h3 style="color: #4a6fa5; margin-top: 15px; margin-bottom: 10px;">math.QA</h3>
+
+            <div class="paper-item">
+                <div class="paper-title">
+                    <a href="https://arxiv.org/abs/2603.18186" target="_blank">Open-Closed String Field Theory from Calabi-Yau Categories and its Applications to Enumerative Geometry</a>
+                    <span class="selection-badge">⭐ 精选</span>
+                </div>
+                <div class="paper-authors">Jakob Ulmer</div>
+                <div class="paper-categories">
+                    <span class="category-tag">math.QA</span>
+<span class="category-tag">hep-th</span>
+<span class="category-tag">math-ph</span>
+<span class="category-tag">math.SG</span>
+                </div>
+            </div>
+            
+        </div>
+    </section>
+    
+    <!-- 所有论文部分 - 按学科分节 -->
+    <section id="papers" class="section">
+        <h2 class="section-title">📄 所有论文</h2>
+        
+        <!-- 这里将动态生成各个学科的论文小节 -->
+        <!-- 格式示例：
+        <div id="cs-AI" class="category-section">
+            <h3 class="category-title">cs.AI - 人工智能</h3>
+            <div class="paper-list">
+                论文内容...
+            </div>
+        </div>
+        <div id="others" class="category-section">
+            <h3 class="category-title">others - 其他</h3>
+            <div class="paper-list">
+                论文内容...
+            </div>
+        </div>
+        -->
+        <div id="math-AG" class="category-section">
+<h3 class="category-title">math.AG</h3>
+<div class="paper-list">
+
+    <div id="paper-2603.18643" class="paper-item">
+        <div class="paper-title">
+            <a href="https://arxiv.org/abs/2603.18643" target="_blank">The Geometry of Polycons and a Counterexample to Wachspress&#39; Conjecture</a>
+    
+        </div>
+        <div class="paper-authors">Clemens Brüser</div>
+        <div class="paper-categories">
+            <span class="category-tag">math.AG</span>
+<span class="category-tag">math.NA</span>
+        </div>
+    
+        <div class="paper-comment">
+            本文构造了一个由三条圆锥曲线围成的polycon, 证明了它构成了Wachspress猜想的一个反例. 通过研究polycon的伴随曲线(adjoint curve)的几何, 特别是其对称线性行列式表示(symmetric linear determinantal representation), 作者描述了由三条圆锥曲线围成的polycon的伴随映射的纤维, 并证明了其伴随曲线在一般情形下是光滑的.
+        </div>
+        </div>
+
+    <div id="paper-2603.18800" class="paper-item">
+        <div class="paper-title">
+            <a href="https://arxiv.org/abs/2603.18800" target="_blank">The Legend of Masaki Kashiwara and Algebraic Analysis</a>
+    
+        </div>
+        <div class="paper-authors">Kiyoshi Takeuchi</div>
+        <div class="paper-categories">
+            <span class="category-tag">math.AG</span>
+        </div>
+    
+        <div class="paper-comment">
+            本文是一篇关于Masaki Kashiwara工作的综述文章, 简要介绍了他在\(\mathcal{D}\)-modules和microlocal analysis等领域的研究, 并阐述了他在代数分析发展中的作用.
+        </div>
+        </div>
+
+    <div id="paper-2603.18842" class="paper-item">
+        <div class="paper-title">
+            <a href="https://arxiv.org/abs/2603.18842" target="_blank">Decorated Local Systems and Character Varieties</a>
+    
+        </div>
+        <div class="paper-authors">Benedetta Facciotti, Marta Mazzocco, Nikita Nikolaev</div>
+        <div class="paper-categories">
+            <span class="category-tag">math.AG</span>
+<span class="category-tag">math-ph</span>
+<span class="category-tag">nlin.SI</span>
+        </div>
+    
+        <div class="paper-comment">
+            本文为带有高阶极点的曲面边界定义了装饰化Betti模空间，提供了一个统一的范畴框架，旨在整合文献中关于带标记点边界曲面基本群胚表示模空间的不同研究方法。
+        </div>
+        </div>
+
+    <div id="paper-2603.19052" class="paper-item">
+        <div class="paper-title">
+            <a href="https://arxiv.org/abs/2603.19052" target="_blank">The Simplicity of the Hodge Bundle</a>
+    
+        </div>
+        <div class="paper-authors">Anand Patel</div>
+        <div class="paper-categories">
+            <span class="category-tag">math.AG</span>
+        </div>
+    
+        <div class="paper-comment">
+            本文证明了在亏格\(g \geq 2\)的曲线模空间上，Hodge bundle不包含任何非平凡的子丛。
+        </div>
+        </div>
+
+    <div id="paper-2603.19184" class="paper-item">
+        <div class="paper-title">
+            <a href="https://arxiv.org/abs/2603.19184" target="_blank">The Euler Stratification for $\mathbb{P}^1 \times \mathbb{P}^1 \times \mathbb{P}^n$</a>
+    
+        </div>
+        <div class="paper-authors">Serkan Hoşten et al.</div>
+        <div class="paper-categories">
+            <span class="category-tag">math.AG</span>
+<span class="category-tag">math.AC</span>
+<span class="category-tag">math.CO</span>
+        </div>
+    
+        <div class="paper-comment">
+            本文研究了定义在\((\mathbb{C}^*)^2 \times (\mathbb{C}^*)^n\)上、由支撑在\(\Delta_1 \times \Delta_1 \times \Delta_n\)中格点的多项式所定义超曲面的Euler示性数. 该超曲面族对应于代数统计学中的三向独立模型, 其Euler示性数等于模型的最大似然度. 文章证明了对于\(n \geq 1\), 所有可能的ML度值都能被实现为Euler示性数, 并完全确定了\(\mathbb{P}^1 \times \mathbb{P}^1 \times \mathbb{P}^1\)情形的Euler分层.
+        </div>
+        </div>
+
+    <div id="paper-2603.19215" class="paper-item">
+        <div class="paper-title">
+            <a href="https://arxiv.org/abs/2603.19215" target="_blank">$R$-equivalence on Cubic Surfaces I: Existing Cases with Non-Trivial Universal Equivalence</a>
+    
+        </div>
+        <div class="paper-authors">Dimitri Kanevsky, Julian Salazar, Matt Harvey</div>
+        <div class="paper-categories">
+            <span class="category-tag">math.AG</span>
+<span class="category-tag">cs.AI</span>
+<span class="category-tag">cs.HC</span>
+<span class="category-tag">math.NT</span>
+        </div>
+    
+        <div class="paper-comment">
+            本文研究了在具有良好约化的 \(p\)-adic 域 \(k\) 上的光滑三次曲面 \(V\) 上的 \(R\)-等价关系。作者针对已知具有非平凡万有等价（universal equivalence）的曲面，特别是所有约化点均为 Eckardt 点的 2-adic 曲面，证明了其上的 \(R\)-等价关系是平凡的或指数为 2，并验证了某些具体例子的平凡性。
+        </div>
+        </div>
+</div>
+</div>
+<div id="math-RT" class="category-section">
+<h3 class="category-title">math.RT</h3>
+<div class="paper-list">
+
+    <div id="paper-2603.18264" class="paper-item">
+        <div class="paper-title">
+            <a href="https://arxiv.org/abs/2603.18264" target="_blank">Classifying submodules over monoidal categories</a>
+    
+        </div>
+        <div class="paper-authors">Hadi Salmasian, Alistair Savage, Yaolong Shen</div>
+        <div class="paper-categories">
+            <span class="category-tag">math.RT</span>
+<span class="category-tag">math.CT</span>
+<span class="category-tag">math.QA</span>
+        </div>
+    
+        <div class="paper-comment">
+            本文研究了monoidal categories上module categories的子模分类问题, 推广了Coulembier关于monoidal categories中tensor ideals分类的思想. 建立了一个适用于配备twisted cylinder twist结构的模范畴的框架, 并在温和假设下建立了子模分类与path-algebra module子模之间的保序双射. 作为应用, 分析了disoriented skein category作为oriented skein category上的模范畴, 并对其子模进行了完全分类.
+        </div>
+        </div>
+
+    <div id="paper-2603.18790" class="paper-item">
+        <div class="paper-title">
+            <a href="https://arxiv.org/abs/2603.18790" target="_blank">Silting theory and derived base change</a>
+    
+        </div>
+        <div class="paper-authors">Riku Fushimi</div>
+        <div class="paper-categories">
+            <span class="category-tag">math.RT</span>
+        </div>
+    
+        <div class="paper-comment">
+            本文在交换完备局部Noether环上建立了silting complexes与simple-minded collections之间的一一对应，推广了域上的已知结果。作为应用，该结果导出了Noether代数在基变换下silting complexes的对应关系。
+        </div>
+        </div>
+
+    <div id="paper-2603.19069" class="paper-item">
+        <div class="paper-title">
+            <a href="https://arxiv.org/abs/2603.19069" target="_blank">Pascal, Catalan, Motzkin triangles and tensor product multiplicities</a>
+    
+        </div>
+        <div class="paper-authors">L. Poulain d'Andecy</div>
+        <div class="paper-categories">
+            <span class="category-tag">math.RT</span>
+<span class="category-tag">math.CO</span>
+        </div>
+    
+        <div class="paper-comment">
+            本文从表示论的角度, 探讨了Catalan triangle和Motzkin triangle等整数三角形与\(sl_2\)表示张量积重数的联系. 作者通过引入这些三角形的推广, 并利用经典的Pascal规则和广义二项式系数差来简洁地描述这些重数.
+        </div>
+        </div>
+
+    <div id="paper-2603.19123" class="paper-item">
+        <div class="paper-title">
+            <a href="https://arxiv.org/abs/2603.19123" target="_blank">The variety of Lie algebra representations</a>
+    
+        </div>
+        <div class="paper-authors">Bruna Mariana Braido da Silva Percinotti</div>
+        <div class="paper-categories">
+            <span class="category-tag">math.RT</span>
+        </div>
+    
+        <div class="paper-comment">
+            本文研究了Lie algebra representations的仿射簇\(L_{n}(\mathfrak{g})\), 即从任意\(n\)维Lie代数到一个固定实半单Lie代数\(\mathfrak{g}\)的所有同态构成的集合. 作者利用实几何不变量理论, 为该簇配备了由实约化群\(GL(n,\mathbb{R}) \times \text{Inn}(\mathfrak{g})\)作用导出的自然moment map和能量泛函, 并分析了该能量泛函临界点的结构.
+        </div>
+        </div>
+</div>
+</div>
+<div id="math-QA" class="category-section">
+<h3 class="category-title">math.QA</h3>
+<div class="paper-list">
+
+    <div id="paper-2603.18186" class="paper-item">
+        <div class="paper-title">
+            <a href="https://arxiv.org/abs/2603.18186" target="_blank">Open-Closed String Field Theory from Calabi-Yau Categories and its Applications to Enumerative Geometry</a>
+    <span class="selection-badge">⭐ 精选</span>
+        </div>
+        <div class="paper-authors">Jakob Ulmer</div>
+        <div class="paper-categories">
+            <span class="category-tag">math.QA</span>
+<span class="category-tag">hep-th</span>
+<span class="category-tag">math-ph</span>
+<span class="category-tag">math.SG</span>
+        </div>
+    
+        <div class="paper-comment">
+            本文通过构造一个 formality \(L_\infty\)-morphism，将 Calabi-Yau \(A_\infty\)-category 及其对象上的代数结构联系起来，从而将闭弦范畴枚举不变量的方法推广到开-闭弦情形。这一构造依赖于 non-commutative Hodge filtration 的一个 splitting，并被视为量化与 Calabi-Yau category 中对象相关的大 \(N\) 开弦场论的关键要素。最后，基于对开闭弦 backreacted 弦场论的代数处理，作者提出了在配分函数层面上实现“Twisted Holography”的范畴化表述的构想。
+        </div>
+        </div>
+</div>
+</div>
+<div id="others" class="category-section">
+<h3 class="category-title">others</h3>
+<div class="paper-list">
+
+    <div id="paper-2603.16380" class="paper-item">
+        <div class="paper-title">
+            <a href="https://arxiv.org/abs/2603.16380" target="_blank">BC Toda chain I: reflection operator and eigenfunctions</a>
+    
+        </div>
+        <div class="paper-authors">N. Belousov, S. Derkachov, S. Khoroshkin</div>
+        <div class="paper-categories">
+            <span class="category-tag">math-ph</span>
+<span class="category-tag">math.RT</span>
+<span class="category-tag">nlin.SI</span>
+        </div>
+    
+        <div class="paper-comment">
+            本文为BC型边界相互作用的量子Toda链引入了反射算子，并利用Gauss-Givental积分表示其本征函数。作者还定义了相应的Baxter算子，证明了其与哈密顿量的对易关系。
+        </div>
+        </div>
+
+    <div id="paper-2603.16387" class="paper-item">
+        <div class="paper-title">
+            <a href="https://arxiv.org/abs/2603.16387" target="_blank">BC Toda chain II: symmetries. Dual picture</a>
+    
+        </div>
+        <div class="paper-authors">N. Belousov, S. Derkachov, S. Khoroshkin</div>
+        <div class="paper-categories">
+            <span class="category-tag">math-ph</span>
+<span class="category-tag">math.RT</span>
+<span class="category-tag">nlin.SI</span>
+        </div>
+    
+        <div class="paper-comment">
+            本文研究了量子BC Toda链的对称性及其对偶描述. 作者证明了Baxter算子的交换性, 并展示了波函数在谱参数的有符号置换下的对称性. 此外, 通过引入Mellin-Barnes积分表示, 作者将波函数与超八面体Whittaker函数联系起来, 并给出了波函数正交性与完备性的启发式证明.
+        </div>
+        </div>
+
+    <div id="paper-2603.18162" class="paper-item">
+        <div class="paper-title">
+            <a href="https://arxiv.org/abs/2603.18162" target="_blank">Castelnuovo-Mumford regularity of toric varieties with at most one singular point</a>
+    
+        </div>
+        <div class="paper-authors">Ignacio García-Marco, Philippe Gimenez, Mario González-Sánchez</div>
+        <div class="paper-categories">
+            <span class="category-tag">math.AC</span>
+<span class="category-tag">math.AG</span>
+<span class="category-tag">math.CO</span>
+        </div>
+    
+        <div class="paper-comment">
+            本文研究了至多有一个奇点的simplicial projective toric variety的坐标环的Castelnuovo-Mumford regularity的上界. 在光滑情形下, 结果恢复了Herzog-Hibi界(即Eisenbud-Goto界). 当variety恰好有一个奇点且维数至少为3时, 证明了其regularity也满足Eisenbud-Goto界. 证明结合了组合与同调方法, 通过研究associated sumsets的渐近行为, 并利用一个Hochster-type公式将其与regularity联系起来.
+        </div>
+        </div>
+
+    <div id="paper-2603.18574" class="paper-item">
+        <div class="paper-title">
+            <a href="https://arxiv.org/abs/2603.18574" target="_blank">Close fields, affine Springer fibers and fundamental lemmas</a>
+    
+        </div>
+        <div class="paper-authors">Sebastian Bartling, Kazuhiro Ito</div>
+        <div class="paper-categories">
+            <span class="category-tag">math.NT</span>
+<span class="category-tag">math.AG</span>
+        </div>
+    
+        <div class="paper-comment">
+            本文研究了仿射 Springer fibers 在 close local fields 族中的几何性质, 证明了其局部常值定理. 由此得到稳定轨道积分在这些族中也是局部常值的, 从而将基变换基本引理和标准内窥基本引理从特征零情形推广到任意正特征情形.
+        </div>
+        </div>
+
+    <div id="paper-2603.18724" class="paper-item">
+        <div class="paper-title">
+            <a href="https://arxiv.org/abs/2603.18724" target="_blank">Bass numbers of local cohomology modules at the first and last non-vanishing levels</a>
+    
+        </div>
+        <div class="paper-authors">M. Jahangiri, R. Ahangari Maleki</div>
+        <div class="paper-categories">
+            <span class="category-tag">math.AC</span>
+<span class="category-tag">math.AG</span>
+        </div>
+    
+        <div class="paper-comment">
+            本文研究了交换 Noether 环上局部上同调模的 Bass 数。作者在两种特定情形下分析了这些不变量：当上同调层级为模的 grade 时，以及当环正则且上同调层级为模的上同调维数时。
+        </div>
+        </div>
+
+    <div id="paper-2603.18820" class="paper-item">
+        <div class="paper-title">
+            <a href="https://arxiv.org/abs/2603.18820" target="_blank">An automata-based test for bricks over string algebras</a>
+    
+        </div>
+        <div class="paper-authors">Amit Kuber, Annoy Sengupta</div>
+        <div class="paper-categories">
+            <span class="category-tag">cs.FL</span>
+<span class="category-tag">math.RT</span>
+        </div>
+    
+        <div class="paper-comment">
+            本文为string algebras上的bricks研究引入了一种基于自动机的判定方法. 作者构造了一种称为multi-entry inverse automaton (MIA)的确定性自动机, 用于接受带标记的pointed words. 通过将string algebra \(\Lambda\)与一个MIA \(\mathsf M_{\Lambda\delta}\)相关联, 证明了string modules和band modules是brick的充要条件, 可以转化为在MIA上对应的words满足特定的性质.
+        </div>
+        </div>
+
+    <div id="paper-2603.19130" class="paper-item">
+        <div class="paper-title">
+            <a href="https://arxiv.org/abs/2603.19130" target="_blank">Quantum block encoding for semiseparable matrices</a>
+    
+        </div>
+        <div class="paper-authors">Giacomo Antonioli et al.</div>
+        <div class="paper-categories">
+            <span class="category-tag">quant-ph</span>
+<span class="category-tag">math.NA</span>
+<span class="category-tag">math.QA</span>
+        </div>
+    
+        <div class="paper-comment">
+            本文针对一类特殊的秩结构矩阵——one-pair semiseparable matrices，提出了一种新的量子块编码方法。该方法基于将矩阵分解为三角矩阵和对角矩阵的乘积，仅需\(2\log(N)+7\)个辅助量子比特，编码过程具有拟对数时间复杂度，误差为\(\mathcal{O}(N^2)\)。
+        </div>
+        </div>
+
+    <div id="paper-2603.19161" class="paper-item">
+        <div class="paper-title">
+            <a href="https://arxiv.org/abs/2603.19161" target="_blank">Duality of generalized Maxwell theories as an equivalence in derived geometry</a>
+    
+        </div>
+        <div class="paper-authors">Chris Elliott et al.</div>
+        <div class="paper-categories">
+            <span class="category-tag">math-ph</span>
+<span class="category-tag">hep-th</span>
+<span class="category-tag">math.AT</span>
+<span class="category-tag">math.QA</span>
+        </div>
+    
+        <div class="paper-comment">
+            本文在 derived differential geometry 的框架下，为任意维度的 p-form generalized Maxwell theories 的模空间提供了一个非微扰描述。该方法结合了 Batalin-Vilkovisky formalism 与 differential cohomology，并在此框架内阐述了 Dirac 电荷量子化以及 abelian duality 的表现。
+        </div>
+        </div>
+
+    <div id="paper-2603.19175" class="paper-item">
+        <div class="paper-title">
+            <a href="https://arxiv.org/abs/2603.19175" target="_blank">Characterizing almost Cohen-Macaulay $3$-generated ideals of codimension $2$ in terms of prescribed shift</a>
+    
+        </div>
+        <div class="paper-authors">Ricardo Burity et al.</div>
+        <div class="paper-categories">
+            <span class="category-tag">math.AC</span>
+<span class="category-tag">math.AG</span>
+        </div>
+    
+        <div class="paper-comment">
+            本文研究了标准分次多项式环上由三个同次形式生成的余维2齐次理想, 这些理想是几乎Cohen-Macaulay的. 通过分析其极小分次自由分解和特定的"潜位移"数据, 引入了关联的"水平矩阵"概念. 主要结果给出了这类理想的一个完全刻画, 即它们的存在等价于一个关联水平矩阵的存在, 使得该理想由固定其下子块得到的子式理想生成.
+        </div>
+        </div>
+
+    <div id="paper-2603.19202" class="paper-item">
+        <div class="paper-title">
+            <a href="https://arxiv.org/abs/2603.19202" target="_blank">Gamma positivity, PL homeomorphism types, and orthogonal polynomials</a>
+    
+        </div>
+        <div class="paper-authors">Soohyun Park</div>
+        <div class="paper-categories">
+            <span class="category-tag">math.CO</span>
+<span class="category-tag">math.AG</span>
+<span class="category-tag">math.GT</span>
+        </div>
+    
+        <div class="paper-comment">
+            本文研究了PL同胚类型在边收缩下的保持性(link condition)如何作为flagness的拓扑代理, 并定量描述了flagness对单纯球面gamma正性的影响. 文章将gamma向量分量与单体/二聚体覆盖联系起来, 并指出了重复边细分与二聚体覆盖之间的关联.
+        </div>
+        </div>
+</div>
+</div>
+    </section>
+    
+    <div class="footnote">
+        <p>- 数据来源 Data Source: <a href="https:arXiv.org">arXiv.org</a></p>
+        <p>- 本网页的内容由 <a href="https://github.com/vegetablefj/bluearXiv-ai">bluearXiv-ai</a> 自动生成。实际抓取的是 arXiv 中 "new" 页面的数据，即最近的有所在分类论文变动的一天的数据。</p>
+        <p>- 感谢 arXiv 提供的服务。评论和精选由 AI 生成，不代表任何人对论文本身的看法。精选依赖于论文与给定关键词的匹配度。</p>
+        <p>- 计数基于主学科，不计重数。</p>
+        <p>- This webpage is automatically generated by <a href="https://github.com/vegetablefj/bluearXiv-ai">bluearXiv-ai</a>.</p>
+        <p>- The data actually captured is from the "new" page, that is, the data of the most recent day when there were changes in corresponding subjects.</p>
+        <p>- Thanks for services prodived by arXiv. Comments and selection of good papers are generated by AI, not showing anyone's point of view about those papers. </p>
+        <p>- The selection also depends on the matched-degrees between papers and given keywords. </p>
+        <p>- The counters are based on main subject, not counting multiplicities.</p>
+    </div>
+    
+    <a href="#" class="back-to-top">↑</a>
+
+    <script>
+        // KaTeX自动渲染配置
+        document.addEventListener('DOMContentLoaded', function() {
+            renderMathInElement(document.body, {
+                delimiters: [
+                    {left: '$$', right: '$$', display: true},
+                    {left: '$', right: '$', display: false},
+                    {left: '\\(', right: '\\)', display: false},
+                    {left: '\\[', right: '\\]', display: true}
+                ],
+                throwOnError: false
+            });
+            
+            // 平滑滚动到锚点
+            document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+                anchor.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const targetId = this.getAttribute('href');
+                    if (targetId === '#') return;
+                    
+                    const targetElement = document.querySelector(targetId);
+                    if (targetElement) {
+                        window.scrollTo({
+                            top: targetElement.offsetTop - 10,
+                            behavior: 'smooth'
+                        });
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>
