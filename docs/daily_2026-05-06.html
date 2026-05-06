@@ -1,0 +1,907 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>bluearXiv-ai - 2026-05-06</title>
+    <!-- KaTeX for LaTeX rendering -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+    <style>
+        body {
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.5;
+            color: #333;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 15px;
+            background-color: #f8f9fa;
+            font-size: 14px;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #4a6fa5;
+        }
+        .header h1 {
+            color: #2c3e50;
+            font-size: 1.6em;
+            margin-bottom: 8px;
+        }
+        .header .date {
+            color: #7f8c8d;
+            font-size: 1.1em;
+            margin-bottom: 10px;
+        }
+        .nav-links {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .nav-link {
+            color: #2980b9;
+            text-decoration: none;
+            margin: 0 10px;
+            font-weight: bold;
+            font-size: 0.95em;
+        }
+        .nav-link:hover {
+            text-decoration: underline;
+        }
+        .config-section {
+            background: white;
+            border-radius: 6px;
+            padding: 15px;
+            margin-bottom: 20px;
+            box-shadow: 0 1px 5px rgba(0,0,0,0.1);
+        }
+        .config-title {
+            font-size: 1.1em;
+            color: #2c3e50;
+            margin-top: 0;
+            margin-bottom: 8px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 5px;
+        }
+        .config-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        .config-item {
+            display: inline-block;
+            background-color: #e8f4fc;
+            color: #2c3e50;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 0.85em;
+            margin: 0 5px 5px 0;
+        }
+        .section {
+            background: white;
+            border-radius: 6px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 1px 5px rgba(0,0,0,0.1);
+        }
+        .section-title {
+            color: #2c3e50;
+            font-size: 1.4em;
+            margin-top: 0;
+            margin-bottom: 15px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #eee;
+        }
+        .counter-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 12px;
+            margin-bottom: 15px;
+        }
+        .counter-item {
+            background-color: #f1f8ff;
+            padding: 12px;
+            border-radius: 5px;
+            text-align: center;
+        }
+        .counter-category {
+            font-size: 1em;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        .counter-value {
+            font-size: 1.5em;
+            color: #4a6fa5;
+            margin: 8px 0;
+        }
+        .category-section {
+            margin-bottom: 30px;
+        }
+        .category-title {
+            color: #2c3e50;
+            font-size: 1.3em;
+            margin-top: 0;
+            margin-bottom: 15px;
+            padding-bottom: 5px;
+            border-bottom: 2px solid #4a6fa5;
+        }
+        .paper-list {
+            margin: 0;
+            padding: 0;
+        }
+        .paper-item {
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #eee;
+        }
+        .paper-item:last-child {
+            border-bottom: none;
+        }
+        .paper-title {
+            font-size: 1.2em;
+            color: #2c3e50;
+            margin-bottom: 6px;
+            line-height: 1.3;
+        }
+        .paper-title a {
+            color: #2c3e50;
+            text-decoration: none;
+        }
+        .paper-title a:hover {
+            color: #4a6fa5;
+            text-decoration: underline;
+        }
+        .paper-authors {
+            color: #666;
+            font-size: 0.95em;
+            margin-bottom: 6px;
+            font-style: italic;
+        }
+        .paper-categories {
+            margin-bottom: 10px;
+        }
+        .category-tag {
+            display: inline-block;
+            background-color: #e8f4fc;
+            color: #2c3e50;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 0.8em;
+            margin-right: 4px;
+        }
+        .paper-comment {
+            background-color: #f9f9f9;
+            padding: 12px;
+            border-radius: 5px;
+            border-left: 3px solid #4a6fa5;
+            font-size: 0.95em;
+            line-height: 1.5;
+        }
+        .selection-badge {
+            display: inline-block;
+            background-color: #ffeaa7;
+            color: #d35400;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 0.8em;
+            font-weight: bold;
+            margin-left: 8px;
+        }
+        .back-to-top {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background-color: #4a6fa5;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 50%;
+            text-decoration: none;
+            font-size: 1em;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+        }
+        .back-to-top:hover {
+            background-color: #3a5a80;
+        }
+        .footnote {
+            font-size: 0.85em;
+            color: #888;
+            margin-top: 20px;
+            padding-top: 15px;
+            border-top: 1px solid #ddd;
+            line-height: 1.4;
+        }
+        @media (max-width: 768px) {
+            .counter-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+            .header h1 {
+                font-size: 1.4em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>bluearXiv-ai 论文精选</h1>
+        <div class="date">2026-05-06</div>
+        <div class="nav-links">
+            <a href="index.html" class="nav-link">返回首页</a>
+            <a href="#counter" class="nav-link">论文统计</a>
+            <a href="#selection" class="nav-link">精选论文</a>
+            <a href="#papers" class="nav-link">所有论文</a>
+        </div>
+    </div>
+    
+    <!-- 特定学科和关键词列表 -->
+    <div class="config-section">
+        <h3 class="config-title">📚 跟踪学科 (Categories)</h3>
+        <ul class="config-list">
+            <li class="config-item">math.AG</li>
+<li class="config-item">math.RT</li>
+<li class="config-item">math.QA</li>
+        </ul>
+    </div>
+    <div class="config-section">
+        <h3 class="config-title">🔍 筛选关键词 (Keywords)</h3>
+        <ul class="config-list">
+            <li class="config-item">hyperkahler</li>
+<li class="config-item">cubic fourfold</li>
+<li class="config-item">Coulomb branch</li>
+<li class="config-item">stability condition</li>
+<li class="config-item">quantum cohomology</li>
+<li class="config-item">automorphism group</li>
+<li class="config-item">Hodge structure</li>
+<li class="config-item">Coulumb branch</li>
+<li class="config-item">hyperplane arrangement</li>
+<li class="config-item">quantum group</li>
+<li class="config-item">geometric langlands program</li>
+<li class="config-item">quiver gauge theory</li>
+<li class="config-item">cluster algebra</li>
+<li class="config-item">Yangian</li>
+<li class="config-item">P=W conjecture</li>
+<li class="config-item">Ngo's support theorem</li>
+<li class="config-item">hypergeometric function</li>
+<li class="config-item">rationality of varieties</li>
+<li class="config-item">Hecke algebra/category</li>
+<li class="config-item">ind-geometry</li>
+<li class="config-item">coherent sheaf</li>
+<li class="config-item">characteristic stack</li>
+<li class="config-item">K3 surface</li>
+<li class="config-item">period map</li>
+        </ul>
+    </div>
+    
+    <!-- 论文统计部分 -->
+    <section id="counter" class="section">
+        <h2 class="section-title">📊 论文统计</h2>
+        <div class="counter-grid">
+            
+        <div class="counter-item">
+            <div class="counter-category">math.AG</div>
+            <div class="counter-value">12</div>
+        </div>
+        
+
+        <div class="counter-item">
+            <div class="counter-category">math.RT</div>
+            <div class="counter-value">7</div>
+        </div>
+        
+
+        <div class="counter-item">
+            <div class="counter-category">math.QA</div>
+            <div class="counter-value">2</div>
+        </div>
+        
+
+        <div class="counter-item">
+            <div class="counter-category">others</div>
+            <div class="counter-value">9</div>
+        </div>
+        
+
+    <div class="counter-item" style="background-color: #e8f4fc;">
+        <div class="counter-category" style="font-weight: bold;">总计</div>
+        <div class="counter-value" style="color: #2c3e50;">30</div>
+    </div>
+    
+        </div>
+    </section>
+    
+    <!-- 精选论文部分 -->
+    <section id="selection" class="section">
+        <h2 class="section-title">⭐ 精选论文</h2>
+        <div class="paper-list">
+            <h3 style="color: #4a6fa5; margin-top: 15px; margin-bottom: 10px;">math.AG</h3>
+
+            <div class="paper-item">
+                <div class="paper-title">
+                    <a href="https://arxiv.org/abs/2605.03097" target="_blank">Support theorem of universal compactified Jacobians</a>
+                    <span class="selection-badge">⭐ 精选</span>
+                </div>
+                <div class="paper-authors">Yifan Wu</div>
+                <div class="paper-categories">
+                    <span class="category-tag">math.AG</span>
+                </div>
+            </div>
+            
+        </div>
+    </section>
+    
+    <!-- 所有论文部分 - 按学科分节 -->
+    <section id="papers" class="section">
+        <h2 class="section-title">📄 所有论文</h2>
+        
+        <!-- 这里将动态生成各个学科的论文小节 -->
+        <!-- 格式示例：
+        <div id="cs-AI" class="category-section">
+            <h3 class="category-title">cs.AI - 人工智能</h3>
+            <div class="paper-list">
+                论文内容...
+            </div>
+        </div>
+        <div id="others" class="category-section">
+            <h3 class="category-title">others - 其他</h3>
+            <div class="paper-list">
+                论文内容...
+            </div>
+        </div>
+        -->
+        <div id="math-AG" class="category-section">
+<h3 class="category-title">math.AG</h3>
+<div class="paper-list">
+
+    <div id="paper-2605.03097" class="paper-item">
+        <div class="paper-title">
+            <a href="https://arxiv.org/abs/2605.03097" target="_blank">Support theorem of universal compactified Jacobians</a>
+    <span class="selection-badge">⭐ 精选</span>
+        </div>
+        <div class="paper-authors">Yifan Wu</div>
+        <div class="paper-categories">
+            <span class="category-tag">math.AG</span>
+        </div>
+    
+        <div class="paper-comment">
+            本文证明了universal compactified Jacobian \(\bar{\pi}\colon \overline{J}_{g,n}^{d,\phi}\to \overline{\mathcal{M}}_{g,n}\)的相对good moduli space的全支撑定理，即BBDG分解中\(\mathrm{R}\bar{\pi}_*\mathrm{IC}(\overline{J}_{g,n}^{d,\phi})\)的每个直和项在基\(\overline{\mathcal{M}}_{g,n}\)上都有全支撑。该工作通过综合Maulik和Shen对Ngô's support theorem的推广、good moduli space morphism的分解定理以及等变perverse sheaves给出第一个证明，并利用稳定性条件的变化和Migliorini、Shende、Viviani关于相对Jacobians的支撑定理提供了独立的第二个证明。该结果与关键词中的Ngô's support theorem高度契合，并为模空间上的perverse sheaf分解理论提供了重要进展。
+        </div>
+        </div>
+
+    <div id="paper-2605.03074" class="paper-item">
+        <div class="paper-title">
+            <a href="https://arxiv.org/abs/2605.03074" target="_blank">Bures Geodesics and Restricted Barycenters for Kronecker Positive Definite Matrices</a>
+    
+        </div>
+        <div class="paper-authors">Jiaping Yang, Yunxin Zhang</div>
+        <div class="paper-categories">
+            <span class="category-tag">math.AG</span>
+        </div>
+    
+        <div class="paper-comment">
+            本文研究了Kronecker正定矩阵模型\(\mcK_n\)中的Bures-Wasserstein几何，分析了两个Kronecker正定矩阵之间的Bures测地线何时能保持在该低维模型中，并给出了局部与整体隶属等价的判据，同时得到了受限重心问题的精确公式。
+        </div>
+        </div>
+
+    <div id="paper-2605.03108" class="paper-item">
+        <div class="paper-title">
+            <a href="https://arxiv.org/abs/2605.03108" target="_blank">Gaiotto Loci and the Nilpotent Cone for $\mathrm{Sp}_{2n}(\mathbb C)$</a>
+    
+        </div>
+        <div class="paper-authors">Lucas Branco</div>
+        <div class="paper-categories">
+            <span class="category-tag">math.AG</span>
+<span class="category-tag">math.DG</span>
+        </div>
+    
+        <div class="paper-comment">
+            本文研究了Gaiotto locus（与theta特征和辛表示相关的稳定Higgs丛的Zariski闭包）在\(\mathrm{Sp}_{2n}(\mathbb C)\)的幂零锥中的性质，证明了它是与\(\mathcal U(\mathrm{Sp}_{2n-2}(\mathbb C))\)相关的Bialynicki-Birula闭包，并给出了其与广义theta除子的余法丛的关系。
+        </div>
+        </div>
+
+    <div id="paper-2605.03115" class="paper-item">
+        <div class="paper-title">
+            <a href="https://arxiv.org/abs/2605.03115" target="_blank">Theorems of Bertini and Chevalley</a>
+    
+        </div>
+        <div class="paper-authors">János Kollár</div>
+        <div class="paper-categories">
+            <span class="category-tag">math.AG</span>
+        </div>
+    
+        <div class="paper-comment">
+            本文给出了Chevalley定理的一个简短证明，即每个algebraic group都可以表示为Abelian variety与linear algebraic group的扩张，并同时处理了Bertini不可约性定理。
+        </div>
+        </div>
+
+    <div id="paper-2605.03166" class="paper-item">
+        <div class="paper-title">
+            <a href="https://arxiv.org/abs/2605.03166" target="_blank">Formal moduli and the splitting theory of supermanifolds</a>
+    
+        </div>
+        <div class="paper-authors">Mauricio Corrêa, Simone Noja</div>
+        <div class="paper-categories">
+            <span class="category-tag">math.AG</span>
+<span class="category-tag">math-ph</span>
+<span class="category-tag">math.DG</span>
+        </div>
+    
+        <div class="paper-comment">
+            本文发展了复supermanifold分裂问题的形式模空间理论，通过构造有限步过滤的dg Lie代数并利用过滤Maurer-Cartan理论控制分裂，证明了经典逐次障碍类可恢复为适应Maurer-Cartan代表元的主项，并将理论转移至最小过滤\(L_\infty\)-模型。该工作与给定关键词（如K3曲面、period map等）无直接关联。
+        </div>
+        </div>
+
+    <div id="paper-2605.03168" class="paper-item">
+        <div class="paper-title">
+            <a href="https://arxiv.org/abs/2605.03168" target="_blank">Real approximation for homogeneous spaces with finite stabilizers</a>
+    
+        </div>
+        <div class="paper-authors">David Harari, Nguyên M\d{a}nh Linh, Giancarlo Lucchini Arteche</div>
+        <div class="paper-categories">
+            <span class="category-tag">math.AG</span>
+<span class="category-tag">math.NT</span>
+        </div>
+    
+        <div class="paper-comment">
+            本文研究了具有有限稳定子的齐次空间上的实逼近问题，利用Brauer-Manin障碍的最新进展，证明了任何被2-primary扩张分裂的有限k-群满足实逼近性质。该工作主要面向数论与代数几何领域的专家，提供了已知但文献中不易找到的证明。
+        </div>
+        </div>
+
+    <div id="paper-2605.03249" class="paper-item">
+        <div class="paper-title">
+            <a href="https://arxiv.org/abs/2605.03249" target="_blank">Spectral correspondence for cyclic Higgs bundles</a>
+    
+        </div>
+        <div class="paper-authors">Jia Choon Lee</div>
+        <div class="paper-categories">
+            <span class="category-tag">math.AG</span>
+        </div>
+    
+        <div class="paper-comment">
+            本文从quiver bundle的视角描述了cyclic Higgs bundles的谱对应，建立了曲线上的cyclic Higgs bundles与非交换曲面上的sheaf之间的一一对应，并推广了\(U(p,p)\)-Higgs bundles的已知谱对应。
+        </div>
+        </div>
+
+    <div id="paper-2605.03522" class="paper-item">
+        <div class="paper-title">
+            <a href="https://arxiv.org/abs/2605.03522" target="_blank">Twisted cohomology on algebraic and analytic varieties</a>
+    
+        </div>
+        <div class="paper-authors">M.S. Islam, A.R. Mishkaat</div>
+        <div class="paper-categories">
+            <span class="category-tag">math.AG</span>
+<span class="category-tag">math.DG</span>
+        </div>
+    
+        <div class="paper-comment">
+            本文回顾并比较了代数簇与解析簇上的twisted cohomology，讨论了两种解析扭曲参数与代数扭曲，并给出了若干计算与同构关系。
+        </div>
+        </div>
+
+    <div id="paper-2605.03655" class="paper-item">
+        <div class="paper-title">
+            <a href="https://arxiv.org/abs/2605.03655" target="_blank">Lectures on Analytic Geometry</a>
+    
+        </div>
+        <div class="paper-authors">Peter Scholze</div>
+        <div class="paper-categories">
+            <span class="category-tag">math.AG</span>
+<span class="category-tag">math.CT</span>
+<span class="category-tag">math.FA</span>
+<span class="category-tag">math.NT</span>
+        </div>
+    
+        <div class="paper-comment">
+            本文是2019/20年波恩大学解析几何课程的讲义更新版，第一部分发展了液态实向量空间的基本理论，第二部分尝试定义包含adic空间和复解析空间的解析空间范畴，但该定义已被视为历史产物。
+        </div>
+        </div>
+
+    <div id="paper-2605.03835" class="paper-item">
+        <div class="paper-title">
+            <a href="https://arxiv.org/abs/2605.03835" target="_blank">Birational Classification of Orbifold Compactified Jacobians</a>
+    
+        </div>
+        <div class="paper-authors">Jeremy Feusi, Sam Molcho</div>
+        <div class="paper-categories">
+            <span class="category-tag">math.AG</span>
+        </div>
+    
+        <div class="paper-comment">
+            本文研究了在torus基上，代数torus或半abelian scheme的torus紧化族的等变orbifold双有理分类问题，将其转化为对数几何中寻找最小orbifold toroidal紧化的组合问题，并解决了代数torus族、节点曲线Jacobian族及具有abelian一般纤维的半abelian scheme的情形。
+        </div>
+        </div>
+
+    <div id="paper-2605.03890" class="paper-item">
+        <div class="paper-title">
+            <a href="https://arxiv.org/abs/2605.03890" target="_blank">Equivariant intermediate Jacobians and intersections of two quadrics</a>
+    
+        </div>
+        <div class="paper-authors">Federico Scavia</div>
+        <div class="paper-categories">
+            <span class="category-tag">math.AG</span>
+        </div>
+    
+        <div class="paper-comment">
+            本文用简洁的证明方法，重新证明了Hassett和Tschinkel的一个定理：对于任意有限群\(G\)，\(\mathbb{P}^5_{\mathbb{C}}\)中两个二次曲面的\(G\)-等变光滑完全交是射影\(G\)-线性的，当且仅当它包含一条\(G\)-不变直线。该结果与关键词列表中的主题关联较弱。
+        </div>
+        </div>
+
+    <div id="paper-2605.03923" class="paper-item">
+        <div class="paper-title">
+            <a href="https://arxiv.org/abs/2605.03923" target="_blank">Some Taylor varieties with null Hessian</a>
+    
+        </div>
+        <div class="paper-authors">Thais Gomes Ribeiro et al.</div>
+        <div class="paper-categories">
+            <span class="category-tag">math.AG</span>
+        </div>
+    
+        <div class="paper-comment">
+            本文研究了由有理函数Taylor展开得到的Taylor簇\(\mathcal{T}^n_{d,e,m}\)，并寻找其中的非退化超曲面。作者证明了\(n=2\)且\(m=d+2\)的情形给出了具有零Hessian矩阵的超曲面的新例子。
+        </div>
+        </div>
+</div>
+</div>
+<div id="math-RT" class="category-section">
+<h3 class="category-title">math.RT</h3>
+<div class="paper-list">
+
+    <div id="paper-2605.03036" class="paper-item">
+        <div class="paper-title">
+            <a href="https://arxiv.org/abs/2605.03036" target="_blank">Pinned Jordan Decomposition of Characters and Depth-Zero Hecke Algebras</a>
+    
+        </div>
+        <div class="paper-authors">Prashant Arote, Manish Mishra</div>
+        <div class="paper-categories">
+            <span class="category-tag">math.RT</span>
+        </div>
+    
+        <div class="paper-comment">
+            本文构造了有限reductive群（可能具有非连通对偶中心化子）的pinned canonical Jordan分解，通过Lusztig的preferred extensions和Clifford理论等工具，建立了特征标集合与unipotent特征标之间的双射。该工作将Lusztig的Jordan分解推广到中心非连通情形，并应用于深度为零的Bernstein块，证明了其Hecke algebra与unipotent Hecke algebra的典范同构。
+        </div>
+        </div>
+
+    <div id="paper-2605.03421" class="paper-item">
+        <div class="paper-title">
+            <a href="https://arxiv.org/abs/2605.03421" target="_blank">A connection between minimal nilpotent orbits of types A and D via Hamiltonian reduction</a>
+    
+        </div>
+        <div class="paper-authors">Baohua Fu, Jie Liu</div>
+        <div class="paper-categories">
+            <span class="category-tag">math.RT</span>
+<span class="category-tag">math.AG</span>
+        </div>
+    
+        <div class="paper-comment">
+            本文通过Hamiltonian约化建立了\(\mathfrak{sl}_n\)中极小幂零轨道\(\mathbb{O}_n\)与\(\mathfrak{so}_{2n+2}\)中极小幂零轨道闭包\(\overline{\mathbf{O}}_n\)之间的联系，证明了\(\overline{T^*\mathbb{O}_n}^{\mathrm{aff}}\)同构于\(\overline{\mathbf{O}}_n\)的\(\mathbb{C}^*\)-Hamiltonian约化，并研究了该约化的几何性质。
+        </div>
+        </div>
+
+    <div id="paper-2605.03458" class="paper-item">
+        <div class="paper-title">
+            <a href="https://arxiv.org/abs/2605.03458" target="_blank">A duality for definable subcategories and its application to torsion classes</a>
+    
+        </div>
+        <div class="paper-authors">Ramin Ebrahimi, Rasool Hafezi, Jiaqun Wei</div>
+        <div class="paper-categories">
+            <span class="category-tag">math.RT</span>
+<span class="category-tag">math.CT</span>
+<span class="category-tag">math.RA</span>
+        </div>
+    
+        <div class="paper-comment">
+            本文为环\(A\)上的右模与左模的可定义子范畴之间已知的对偶性提供了一个变体，构造了一个从右模的可定义子范畴到自身的自然双射。对于双边的Noetherian环，该双射限制为可定义torsion classes与可定义torsion-free classes之间的双射，并在有限维代数情形下给出了torsion classes格的一个反自同构。
+        </div>
+        </div>
+
+    <div id="paper-2605.03506" class="paper-item">
+        <div class="paper-title">
+            <a href="https://arxiv.org/abs/2605.03506" target="_blank">Growth rates of indecomposable summands in tensor powers of representations of quivers</a>
+    
+        </div>
+        <div class="paper-authors">Ming Lu, Yayun Zhang</div>
+        <div class="paper-categories">
+            <span class="category-tag">math.RT</span>
+        </div>
+    
+        <div class="paper-comment">
+            本文研究了quiver表示在两种典型张量积（逐点张量积和由path algebra的coalgebra结构诱导的张量积）下，其张量幂中不可分解直和项数量的增长率。
+        </div>
+        </div>
+
+    <div id="paper-2605.03638" class="paper-item">
+        <div class="paper-title">
+            <a href="https://arxiv.org/abs/2605.03638" target="_blank">Characteristic-free approaches around Yu&#39;s construction</a>
+    
+        </div>
+        <div class="paper-authors">Yuta Takaya</div>
+        <div class="paper-categories">
+            <span class="category-tag">math.RT</span>
+<span class="category-tag">math.AG</span>
+<span class="category-tag">math.NT</span>
+        </div>
+    
+        <div class="paper-comment">
+            本文给出了一种无特征直接构造扭曲Heisenberg-Weil表示的方法，并证明了该构造在剩余特征为\(2\)时自然成立。此外，通过Deligne-Lusztig构造给出了该表示的几何实现，并应用于正深度parahoric Deligne-Lusztig诱导的显式描述。
+        </div>
+        </div>
+
+    <div id="paper-2605.03925" class="paper-item">
+        <div class="paper-title">
+            <a href="https://arxiv.org/abs/2605.03925" target="_blank">Additive categorification of the monoidal $Λ$-invariant</a>
+    
+        </div>
+        <div class="paper-authors">Ricardo Canesin, Geoffrey Janssens</div>
+        <div class="paper-categories">
+            <span class="category-tag">math.RT</span>
+        </div>
+    
+        <div class="paper-comment">
+            本文在量子仿射代数\(U_q'(\mathfrak{g})\)的表示论中，通过Higgs范畴为cluster algebra的\(\Lambda\)-不变量提供了加法解释，并证明了相关相对Ginzburg代数的proper性，从而建立了cluster代数与\(\Lambda\)-cluster代数之间的联系。
+        </div>
+        </div>
+
+    <div id="paper-2605.03985" class="paper-item">
+        <div class="paper-title">
+            <a href="https://arxiv.org/abs/2605.03985" target="_blank">Classification of irreducible Harish-Chandra modules over extended Divergence-zero Lie algebras</a>
+    
+        </div>
+        <div class="paper-authors">Sudipta Mukherjee</div>
+        <div class="paper-categories">
+            <span class="category-tag">math.RT</span>
+        </div>
+    
+        <div class="paper-comment">
+            本文研究了扩展散度零Lie代数\(\EuScript{G}:=\EuScript{D}_n \ltimes \mathcal{A}_n\)上具有非平凡\(\mathcal{A}_n'\)作用的不可约Harish-Chandra模的分类，证明了此类模要么是cuspidal模，要么是广义最高权模，且后者可化为关于合适三角分解的最高权模。该工作与关键词列表中的主题关联较弱。
+        </div>
+        </div>
+</div>
+</div>
+<div id="math-QA" class="category-section">
+<h3 class="category-title">math.QA</h3>
+<div class="paper-list">
+
+    <div id="paper-2605.02941" class="paper-item">
+        <div class="paper-title">
+            <a href="https://arxiv.org/abs/2605.02941" target="_blank">Bosonic Ghost Correlators: A Case Study</a>
+    
+        </div>
+        <div class="paper-authors">Xueting Li, Damodar Rajbhandari, David Ridout</div>
+        <div class="paper-categories">
+            <span class="category-tag">math.QA</span>
+<span class="category-tag">hep-th</span>
+<span class="category-tag">math-ph</span>
+        </div>
+    
+        <div class="paper-comment">
+            本文通过微分方程方法研究了玻色子鬼系统（bosonic ghost system）的相关函数，验证了四点函数中存在对数奇点，为对数共形场论提供了分析数据。
+        </div>
+        </div>
+
+    <div id="paper-2605.03708" class="paper-item">
+        <div class="paper-title">
+            <a href="https://arxiv.org/abs/2605.03708" target="_blank">Modular functors and CFT correlators via double categories</a>
+    
+        </div>
+        <div class="paper-authors">Jürgen Fuchs, Christoph Schweigert, Yang Yang</div>
+        <div class="paper-categories">
+            <span class="category-tag">math.QA</span>
+<span class="category-tag">hep-th</span>
+<span class="category-tag">math-ph</span>
+        </div>
+    
+        <div class="paper-comment">
+            本文利用double categories为modular functors和CFT关联函数提供了统一框架，通过string-net构造将bordisms的double category映射到profunctors和functors的double category，并证明了基于pivotal monoidal category的场函子等价性。
+        </div>
+        </div>
+</div>
+</div>
+<div id="others" class="category-section">
+<h3 class="category-title">others</h3>
+<div class="paper-list">
+
+    <div id="paper-2605.02994" class="paper-item">
+        <div class="paper-title">
+            <a href="https://arxiv.org/abs/2605.02994" target="_blank">Using Large Language Models as a Co-Author in Undergraduate Quantum Group Research</a>
+    
+        </div>
+        <div class="paper-authors">Jeffrey Kuan</div>
+        <div class="paper-categories">
+            <span class="category-tag">math.HO</span>
+<span class="category-tag">math.PR</span>
+<span class="category-tag">math.QA</span>
+        </div>
+    
+        <div class="paper-comment">
+            本文探讨了使用大型语言模型Claude作为合作者，生成了一篇关于量子群\(U_q(so_{12})\)中心元素新显式公式的数学研究论文。该成果在质量和范围上可与本科生REU项目相媲美，并利用SageMath和稀疏PBW基配对矩阵大幅提升了计算效率。文章反思了生成式AI对本科生研究指导的影响，并记录了模型在运行时估算和数学惯例处理上的局限性。
+        </div>
+        </div>
+
+    <div id="paper-2605.03094" class="paper-item">
+        <div class="paper-title">
+            <a href="https://arxiv.org/abs/2605.03094" target="_blank">Combinatorial aspects of normal ordering of 3-dimensional skew polynomial rings</a>
+    
+        </div>
+        <div class="paper-authors">Andrés Rubiano, Armando Reyes</div>
+        <div class="paper-categories">
+            <span class="category-tag">math.CO</span>
+<span class="category-tag">math.QA</span>
+        </div>
+    
+        <div class="paper-comment">
+            本文利用SageMath软件，研究了由Bell和Smith定义并分类的三维skew polynomial rings中normal ordering的组合方面，主要关注这些代数在交换规则中出现的PBW forms和normal orderings的计算长度缩减。
+        </div>
+        </div>
+
+    <div id="paper-2605.03113" class="paper-item">
+        <div class="paper-title">
+            <a href="https://arxiv.org/abs/2605.03113" target="_blank">Linearly distributive coherence in the absence of units</a>
+    
+        </div>
+        <div class="paper-authors">Max Demirdilek, Christian Reiher, Christoph Schweigert</div>
+        <div class="paper-categories">
+            <span class="category-tag">math.CO</span>
+<span class="category-tag">math.CT</span>
+<span class="category-tag">math.QA</span>
+        </div>
+    
+        <div class="paper-comment">
+            本文研究了无单位的线性分配范畴（linearly distributive categories without units）的相干性，证明了其结构态射（如associators和distributors）满足一致性，而单位的存在可能破坏这种相干性。该结果还推广到Frobenius线性分配函子，并可用associahedra和multiplichedra中的有向路径重新表述。
+        </div>
+        </div>
+
+    <div id="paper-2605.03453" class="paper-item">
+        <div class="paper-title">
+            <a href="https://arxiv.org/abs/2605.03453" target="_blank">Higher categories of bordisms with geometric structures</a>
+    
+        </div>
+        <div class="paper-authors">Daniel Grady, Dmitri Pavlov</div>
+        <div class="paper-categories">
+            <span class="category-tag">math.AT</span>
+<span class="category-tag">math-ph</span>
+<span class="category-tag">math.QA</span>
+        </div>
+    
+        <div class="paper-comment">
+            本文为带有几何结构的bordisms建立了一套公理系统，定义了唯一的(infinity,d)-category，并构造了对称monoidal (infinity,d)-category，证明了其满足所提公理。该工作主要涉及bordism范畴的抽象框架，与所给关键词列表中的具体几何或代数结构关联较弱。
+        </div>
+        </div>
+
+    <div id="paper-2605.03519" class="paper-item">
+        <div class="paper-title">
+            <a href="https://arxiv.org/abs/2605.03519" target="_blank">Infinitesimal characters for the completed cohomology of $\mathrm{GL}_n$ over CM fields</a>
+    
+        </div>
+        <div class="paper-authors">Jelena Ivančić, Vaughan McDonald</div>
+        <div class="paper-categories">
+            <span class="category-tag">math.NT</span>
+<span class="category-tag">math.AG</span>
+        </div>
+    
+        <div class="paper-comment">
+            本文证明了在CM域\(F\)上，\(\mathrm{GL}_n\)的\(p\)-进完备上同调中，局部化于非Eisenstein分解的generic maximal ideal的Hecke特征空间，其局部解析向量具有由相应Galois表示的Sen算子决定的无穷小特征，从而证实了Dospinescu-Paškūnas-Schraen的一个猜想。
+        </div>
+        </div>
+
+    <div id="paper-2605.03521" class="paper-item">
+        <div class="paper-title">
+            <a href="https://arxiv.org/abs/2605.03521" target="_blank">Open-closed Deligne-Mumford field theories: construction</a>
+    
+        </div>
+        <div class="paper-authors">Amanda Hirschi, Kai Hugtenburg</div>
+        <div class="paper-categories">
+            <span class="category-tag">math.SG</span>
+<span class="category-tag">math.AG</span>
+<span class="category-tag">math.AT</span>
+        </div>
+    
+        <div class="paper-comment">
+            本文构造了基于带边稳定曲线模空间的open-closed Deligne-Mumford field theory，并将其与相对spin嵌入的Lagrangian子流形相关联，扩展了Fukaya \(A_\infty\)代数到任意高亏格和任意多边界分支的情形。该构造是证明Kontsevich猜想（Fukaya范畴决定Gromov-Witten不变量）的第一步。
+        </div>
+        </div>
+
+    <div id="paper-2605.03658" class="paper-item">
+        <div class="paper-title">
+            <a href="https://arxiv.org/abs/2605.03658" target="_blank">Lectures on Condensed Mathematics</a>
+    
+        </div>
+        <div class="paper-authors">Peter Scholze</div>
+        <div class="paper-categories">
+            <span class="category-tag">math.NT</span>
+<span class="category-tag">math.AG</span>
+<span class="category-tag">math.CT</span>
+<span class="category-tag">math.FA</span>
+<span class="category-tag">math.GN</span>
+        </div>
+    
+        <div class="paper-comment">
+            本文是Scholze在波恩大学2019年夏季学期关于凝聚态数学（condensed mathematics）课程的讲义更新版，内容是与Dustin Clausen的合作工作。该讲义主要对原文档进行了外观上的修改和一些小的更正，旨在提供一个稳定的可引用版本。
+        </div>
+        </div>
+
+    <div id="paper-2605.03798" class="paper-item">
+        <div class="paper-title">
+            <a href="https://arxiv.org/abs/2605.03798" target="_blank">Central series of cocommutative Hopf braces</a>
+    
+        </div>
+        <div class="paper-authors">Maria Bevilacqua, Marino Gran, Andrea Sciandra</div>
+        <div class="paper-categories">
+            <span class="category-tag">math.RA</span>
+<span class="category-tag">math.CT</span>
+<span class="category-tag">math.QA</span>
+<span class="category-tag">math.RT</span>
+        </div>
+    
+        <div class="paper-comment">
+            本文通过推广群和skew braces的经典结果，定义了余交换Hopf braces的中心列，引入了socle和annihilator的概念，并刻画了相对于余交换Hopf代数子范畴的中心扩张。
+        </div>
+        </div>
+
+    <div id="paper-2605.03896" class="paper-item">
+        <div class="paper-title">
+            <a href="https://arxiv.org/abs/2605.03896" target="_blank">Dimer models on astroidal zig-zag graphs</a>
+    
+        </div>
+        <div class="paper-authors">Tomas Berggren, Alexei Borodin, Terrence George</div>
+        <div class="paper-categories">
+            <span class="category-tag">math.PR</span>
+<span class="category-tag">math-ph</span>
+<span class="category-tag">math.AG</span>
+<span class="category-tag">math.CO</span>
+<span class="category-tag">nlin.SI</span>
+        </div>
+    
+        <div class="paper-comment">
+            本文研究了星形锯齿图上的dimer模型，构造了一类有限子图族并给出了其Kasteleyn矩阵的显式逆，该逆矩阵由谱曲线上的双围道积分表示。对于周期加权情形，文章分析了大型AZ图的相分离现象，得到了“北极曲线”的显式参数化，并证明了高度函数的极限形状及局部关联的收敛性。
+        </div>
+        </div>
+</div>
+</div>
+    </section>
+    
+    <div class="footnote">
+        <p>- 数据来源 Data Source: <a href="https:arXiv.org">arXiv.org</a></p>
+        <p>- 本网页的内容由 <a href="https://github.com/vegetablefj/bluearXiv-ai">bluearXiv-ai</a> 自动生成。实际抓取的是 arXiv 中 "new" 页面的数据，即最近的有所在分类论文变动的一天的数据。</p>
+        <p>- 感谢 arXiv 提供的服务。评论和精选由 AI 生成，不代表任何人对论文本身的看法。精选依赖于论文与给定关键词的匹配度。</p>
+        <p>- 计数基于主学科，不计重数。</p>
+        <p>- This webpage is automatically generated by <a href="https://github.com/vegetablefj/bluearXiv-ai">bluearXiv-ai</a>.</p>
+        <p>- The data actually captured is from the "new" page, that is, the data of the most recent day when there were changes in corresponding subjects.</p>
+        <p>- Thanks for services prodived by arXiv. Comments and selection of good papers are generated by AI, not showing anyone's point of view about those papers. </p>
+        <p>- The selection also depends on the matched-degrees between papers and given keywords. </p>
+        <p>- The counters are based on main subject, not counting multiplicities.</p>
+    </div>
+    
+    <a href="#" class="back-to-top">↑</a>
+
+    <script>
+        // KaTeX自动渲染配置
+        document.addEventListener('DOMContentLoaded', function() {
+            renderMathInElement(document.body, {
+                delimiters: [
+                    {left: '$$', right: '$$', display: true},
+                    {left: '$', right: '$', display: false},
+                    {left: '\\(', right: '\\)', display: false},
+                    {left: '\\[', right: '\\]', display: true}
+                ],
+                throwOnError: false
+            });
+            
+            // 平滑滚动到锚点
+            document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+                anchor.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const targetId = this.getAttribute('href');
+                    if (targetId === '#') return;
+                    
+                    const targetElement = document.querySelector(targetId);
+                    if (targetElement) {
+                        window.scrollTo({
+                            top: targetElement.offsetTop - 10,
+                            behavior: 'smooth'
+                        });
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>
