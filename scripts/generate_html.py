@@ -9,6 +9,7 @@ import json
 import re
 import datetime
 from html import escape, unescape
+from html.parser import HTMLParser
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 from typing import Dict, List, Any
@@ -30,6 +31,7 @@ DOCS_DIR = Path(config.PROJECT_ROOT) / "docs"
 CATEGORIES = config.CATEGORIES
 DISPLAY_TIMEZONE = datetime.timezone(datetime.timedelta(hours=8))
 FEATURED_LIMIT = 6
+DAILY_FILENAME = re.compile(r"daily_(\d{4}-\d{2}-\d{2})\.html")
 
 # 历史归档只有 HTML。使用原有的标题、精选标记和作者结构读取其索引信息。
 FEATURED_PAPER_RE = re.compile(
@@ -340,12 +342,38 @@ def generate_daily_html(
         return False
 
 
+class CanonicalLinkParser(HTMLParser):
+    def __init__(self):
+        super().__init__()
+        self.links = set()
+
+    def handle_starttag(self, tag, attrs):
+        if tag != "link":
+            return
+        attributes = dict(attrs)
+        if "canonical" in (attributes.get("rel") or "").lower().split():
+            self.links.add(attributes.get("href") or "")
+
+
+def read_canonical_filename(content: str) -> str | None:
+    head = re.search(r"<head\b[^>]*>(.*?)</head\s*>", content, re.IGNORECASE | re.DOTALL)
+    if head and "canonical" in head[1].lower():
+        parser = CanonicalLinkParser()
+        parser.feed(head[1])
+        if len(parser.links) == 1:
+            filename = next(iter(parser.links)).strip().removeprefix("./")
+            if DAILY_FILENAME.fullmatch(filename):
+                return filename
+    return None
+
+
 def scan_existing_daily_files(output_dir: Path = DOCS_DIR) -> List[Dict[str, Any]]:
     """扫描已有的每日报告文件，兼容历史归档的 HTML。"""
-    daily_files = []
+    reports = {}
+    canonical_links = {}
     for file_path in sorted(output_dir.glob("daily_*.html"), reverse=True):
-        match = re.fullmatch(r"daily_(\d{4}-\d{2}-\d{2})\.html", file_path.name)
-        if not match:
+        match = DAILY_FILENAME.fullmatch(file_path.name)
+        if not match or not file_path.is_file() or file_path.is_symlink():
             continue
         try:
             publication_date = datetime.date.fromisoformat(match[1])
@@ -353,6 +381,9 @@ def scan_existing_daily_files(output_dir: Path = DOCS_DIR) -> List[Dict[str, Any
             continue
 
         content = file_path.read_text(encoding="utf-8")
+        canonical_filename = read_canonical_filename(content)
+        if canonical_filename and canonical_filename != file_path.name:
+            canonical_links[file_path.name] = canonical_filename
         category_counts = {
             unescape(category.strip()): int(count)
             for category, count in re.findall(
@@ -366,28 +397,44 @@ def scan_existing_daily_files(output_dir: Path = DOCS_DIR) -> List[Dict[str, Any
             paper_id: (unescape(title), unescape(authors))
             for paper_id, title, authors in FEATURED_PAPER_RE.findall(content)
         }
-        daily_files.append({
+        reports[file_path.name] = {
             "date": publication_date,
             "filename": file_path.name,
             "total_papers": total,
             "featured_papers": featured_papers,
             "category_counts": category_counts,
-        })
+            "alias_dates": [],
+        }
 
-    return daily_files
+    canonical_links = {
+        source: target for source, target in canonical_links.items() if target in reports
+    }
+    superseded = set()
+    for source, target in canonical_links.items():
+        visited = {source}
+        while target in canonical_links and target not in visited:
+            visited.add(target)
+            target = canonical_links[target]
+        if target not in visited:
+            reports[target]["alias_dates"].append(reports[source]["date"])
+            superseded.add(source)
+
+    return [report for filename, report in reports.items() if filename not in superseded]
 
 
 def generate_archive_html(daily_files: List[Dict[str, Any]]) -> str:
     date_items = []
     for daily_info in daily_files:
         date = daily_info["date"]
+        aliases = " ".join(day.isoformat() for day in sorted(daily_info["alias_dates"]))
+        alias_attribute = f' data-alias-dates="{aliases}"' if aliases else ""
         category_counts = {category: count for category, count in daily_info["category_counts"].items() if count}
         category_tags = "".join(
             f'<span class="category-tag">{escape_html(category)}: {count}</span>'
             for category, count in category_counts.items()
         )
         date_items.append(f"""
-        <article class="date-card" data-date="{date}">
+        <article class="date-card" data-date="{date}"{alias_attribute}>
             <a href="{daily_info['filename']}" class="date-link"><time datetime="{date}">{date:%Y年%m月%d日}</time></a>
             <div class="stats">
                 <div class="stat-item">论文 {daily_info['total_papers']} 篇</div>

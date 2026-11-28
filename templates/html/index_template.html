@@ -175,9 +175,15 @@
             const dateInput = document.getElementById('archive-date');
             const result = document.getElementById('archive-result');
             const months = new Map();
+            const aliasDates = new Map();
 
             for (const card of cards) {
                 const month = card.dataset.date.slice(0, 7);
+                if (card.dataset.aliasDates) {
+                    for (const alias of card.dataset.aliasDates.split(' ')) {
+                        aliasDates.set(alias, card.dataset.date);
+                    }
+                }
                 if (!months.has(month)) {
                     const group = document.createElement('section');
                     const heading = document.createElement('h3');
@@ -200,16 +206,22 @@
             result.hidden = false;
 
             function filterArchive() {
+                const requestedDate = dateInput.value;
+                const matchingDate = aliasDates.get(requestedDate) || requestedDate;
                 let visible = 0;
                 for (const [month, { group, grid }] of months) {
                     const inMonth = !monthSelect.value || monthSelect.value === month;
                     for (const card of grid.children) {
-                        card.hidden = !inMonth || (dateInput.value !== '' && card.dataset.date !== dateInput.value);
+                        card.hidden = !inMonth || (matchingDate !== '' && card.dataset.date !== matchingDate);
                         if (!card.hidden) visible++;
                     }
                     group.hidden = !grid.querySelector('.date-card:not([hidden])');
                 }
-                result.textContent = visible ? '共 ' + visible + ' 期日报' : '未找到该日期的日报';
+                if (visible && requestedDate !== matchingDate) {
+                    result.textContent = requestedDate + ' 的内容已归入 ' + matchingDate + ' 日报';
+                } else {
+                    result.textContent = visible ? '共 ' + visible + ' 期日报' : '未找到该日期的日报';
+                }
             }
 
             monthSelect.addEventListener('change', () => {
@@ -217,7 +229,8 @@
                 filterArchive();
             });
             dateInput.addEventListener('change', () => {
-                const month = dateInput.value.slice(0, 7);
+                const matchingDate = aliasDates.get(dateInput.value) || dateInput.value;
+                const month = matchingDate.slice(0, 7);
                 monthSelect.value = months.has(month) ? month : '';
                 filterArchive();
             });

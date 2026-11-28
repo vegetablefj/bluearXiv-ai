@@ -174,21 +174,11 @@
             <p id="archive-result" class="filter-result" aria-live="polite" hidden></p>
             <div id="archive-list" class="archive-list">
 
-        <article class="date-card" data-date="2026-11-27">
+        <article class="date-card" data-date="2026-11-27" data-alias-dates="2026-11-26">
             <a href="daily_2026-11-27.html" class="date-link"><time datetime="2026-11-27">2026年11月27日</time></a>
             <div class="stats">
                 <div class="stat-item">论文 47 篇</div>
                 <div class="stat-item">精选 4 篇</div>
-            </div>
-            <div class="category-tags"><span class="category-tag">math.AG: 22</span><span class="category-tag">math.RT: 8</span><span class="category-tag">math.QA: 4</span><span class="category-tag">others: 13</span></div>
-        </article>
-
-
-        <article class="date-card" data-date="2026-11-26">
-            <a href="daily_2026-11-26.html" class="date-link"><time datetime="2026-11-26">2026年11月26日</time></a>
-            <div class="stats">
-                <div class="stat-item">论文 47 篇</div>
-                <div class="stat-item">精选 3 篇</div>
             </div>
             <div class="category-tags"><span class="category-tag">math.AG: 22</span><span class="category-tag">math.RT: 8</span><span class="category-tag">math.QA: 4</span><span class="category-tag">others: 13</span></div>
         </article>
@@ -2266,9 +2256,15 @@
             const dateInput = document.getElementById('archive-date');
             const result = document.getElementById('archive-result');
             const months = new Map();
+            const aliasDates = new Map();
 
             for (const card of cards) {
                 const month = card.dataset.date.slice(0, 7);
+                if (card.dataset.aliasDates) {
+                    for (const alias of card.dataset.aliasDates.split(' ')) {
+                        aliasDates.set(alias, card.dataset.date);
+                    }
+                }
                 if (!months.has(month)) {
                     const group = document.createElement('section');
                     const heading = document.createElement('h3');
@@ -2291,16 +2287,22 @@
             result.hidden = false;
 
             function filterArchive() {
+                const requestedDate = dateInput.value;
+                const matchingDate = aliasDates.get(requestedDate) || requestedDate;
                 let visible = 0;
                 for (const [month, { group, grid }] of months) {
                     const inMonth = !monthSelect.value || monthSelect.value === month;
                     for (const card of grid.children) {
-                        card.hidden = !inMonth || (dateInput.value !== '' && card.dataset.date !== dateInput.value);
+                        card.hidden = !inMonth || (matchingDate !== '' && card.dataset.date !== matchingDate);
                         if (!card.hidden) visible++;
                     }
                     group.hidden = !grid.querySelector('.date-card:not([hidden])');
                 }
-                result.textContent = visible ? '共 ' + visible + ' 期日报' : '未找到该日期的日报';
+                if (visible && requestedDate !== matchingDate) {
+                    result.textContent = requestedDate + ' 的内容已归入 ' + matchingDate + ' 日报';
+                } else {
+                    result.textContent = visible ? '共 ' + visible + ' 期日报' : '未找到该日期的日报';
+                }
             }
 
             monthSelect.addEventListener('change', () => {
@@ -2308,7 +2310,8 @@
                 filterArchive();
             });
             dateInput.addEventListener('change', () => {
-                const month = dateInput.value.slice(0, 7);
+                const matchingDate = aliasDates.get(dateInput.value) || dateInput.value;
+                const month = matchingDate.slice(0, 7);
                 monthSelect.value = months.has(month) ? month : '';
                 filterArchive();
             });
