@@ -9,7 +9,7 @@ class Config:
     
     # 数据目录
     DATA_DIR: str = os.path.join(PROJECT_ROOT, 'data')
-    DATA_RAW_DIR: str = os.path.join(DATA_DIR, 'raw')
+    DATA_RAW_DIR: str = os.getenv('BLUEARXIV_DATA_RAW_DIR', os.path.join(DATA_DIR, 'raw'))
     
     # 模板目录
     TEMPLATES_DIR: str = os.path.join(PROJECT_ROOT, 'templates')

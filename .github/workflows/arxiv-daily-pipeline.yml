@@ -1,344 +1,180 @@
-# .github/workflows/arxiv-daily-pipeline.yml
 name: arXiv Daily Paper Pipeline (TeX + HTML)
 
 on:
   schedule:
-    - cron: '0 4 * * 1-5'  # UTC时间4点 = 北京时间12点, 周末不运行
+    - cron: '0 4 * * 1-5'  # 北京时间周一至周五 12:00
   workflow_dispatch:
     inputs:
-      skip_fetch:
-        description: '跳过抓取步骤'
-        required: false
-        default: 'false'
-      test_mode:
-        description: '测试模式'
-        required: false
-        default: 'false'
-      ai_model_name:
-        description: 'AI模型名称（可选）'
-        required: false
-        default: 'deepseek-chat'
-        type: string
       date:
-        description: '指定日期（格式：YYYY-MM-DD，默认为今天）'
-        required: false
+        description: '预期的北京时间日报日期（YYYY-MM-DD，可选）'
         type: string
+      test_mode:
+        description: '仅生成最多三篇论文的预览，不调用 AI 或发布'
+        type: boolean
+        default: false
+      skip_fetch:
+        description: '使用同仓库此前运行的 arxiv-source 缓存'
+        type: boolean
+        default: false
+      source_run_id:
+        description: '启用 skip_fetch 时，指定已有源缓存的 Actions 运行 ID'
+        type: string
+      ai_model_name:
+        description: 'DeepSeek 模型名称'
+        type: string
+        default: 'deepseek-chat'
 
-env:
-  PYTHON_VERSION: '3.10'
-  # DATE 变量将在步骤中设置
+concurrency:
+  group: arxiv-daily-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   process-papers:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
     permissions:
       contents: write
-    runs-on: ubuntu-latest
+      actions: read
     env:
       AI_MODEL_NAME: ${{ inputs.ai_model_name || 'deepseek-chat' }}
-    
-    steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
-      with:
-        fetch-depth: 0  # 获取完整历史，便于推送
-    
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: ${{ env.PYTHON_VERSION }}
-    
-    - name: Install Python dependencies
-      run: |
-        pip install --upgrade pip
-        pip install -r requirements.txt
-    
-    - name: Create directories
-      run: |
-        mkdir -p data/raw docs
-        mkdir -p log 2>/dev/null || true
-    
-    - name: Run pipeline (允许部分失败)
-      continue-on-error: true
-      env:
-        DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
-        MODEL_SCOPE_API_KEY: ${{ secrets.MODEL_SCOPE_API_KEY }}
-      run: |
-        set +e  # 允许错误继续执行
-        
-        echo "=== Starting arXiv Pipeline (TeX + HTML) ==="
-        
-        # 设置日期：如果提供了输入日期则使用，否则使用今天
-        if [ -n "${{ github.event.inputs.date }}" ]; then
-          CURRENT_DATE="${{ github.event.inputs.date }}"
-        else
-          CURRENT_DATE=$(date +%Y-%m-%d)
-        fi
-        echo "当前日期: $CURRENT_DATE"
-        
-        # 抓取论文（可选跳过）
-        if [ "${{ github.event.inputs.skip_fetch }}" != "true" ]; then
-          echo "步骤1: 抓取论文ID"
-          cd scripts && python fetch_paper_ids.py || echo "抓取步骤有错误，但继续执行" && cd ..
-        else
-          echo "步骤1: 跳过抓取（使用现有数据）"
-        fi
-        
-        # AI反馈
-        echo "步骤2: 生成AI反馈"
-        cd scripts
-        if [ "${{ github.event.inputs.test_mode }}" = "true" ]; then
-          python ai_feedback.py --test-mode || echo "AI反馈步骤有错误，但继续执行"
-        else
-          python ai_feedback.py || echo "AI反馈步骤有错误，但继续执行"
-        fi
-        cd ..
-        
-        # 分类过滤
-        echo "步骤3: 运行分类过滤"
-        cd scripts && python category_filter.py || echo "分类过滤步骤有错误，但继续执行" && cd ..
-        
-        # 生成TeX
-        echo "步骤4: 生成TeX文件"
-        cd scripts && python generate_tex.py || echo "生成TeX步骤有错误，但继续执行" && cd ..
-        
-        # 生成HTML
-        echo "步骤5: 生成HTML文件"
-        cd scripts && python generate_html.py || echo "生成HTML步骤有错误，但继续执行" && cd ..
-        
-        echo "=== Pipeline Complete (生成TeX和HTML文件) ==="
-    
-    - name: Check what files were generated
-      if: always()
-      run: |
-        echo "=== 生成的文件检查 ==="
-        echo "当前目录:"
-        pwd
-        ls -la
-        
-        echo "检查TeX文件:"
-        if [ -f "data/raw/daily_feedback_tex/daily_feedback_*.tex" ]; then
-          echo "✓ TeX文件存在"
-          echo "最新的TeX文件:"
-          ls -la data/raw/daily_feedback_tex/daily_feedback_*.tex | tail -1
-        else
-          echo "✗ TeX文件不存在"
-        fi
-        
-        echo "检查HTML文件:"
-        if [ -d "docs" ]; then
-          echo "✓ docs目录存在"
-          echo "HTML文件:"
-          ls -la docs/*.html 2>/dev/null || echo "没有HTML文件"
-        else
-          echo "✗ docs目录不存在"
-        fi
-        
-        echo "检查数据目录:"
-        if [ -d "data" ]; then
-          echo "✓ data目录存在"
-          find data/ -type f -name "*.json" | head -5
-        else
-          echo "✗ data目录不存在"
-        fi
-    
-    - name: Setup Git
-      if: always()
-      run: |
-        # 配置Git用户
-        git config --local user.email "github-actions[bot]@users.noreply.github.com"
-        git config --local user.name "github-actions[bot]"
-        # 注意：此处暂时不执行 `git pull`
 
-    - name: Commit generated files
-      if: always()
-      id: commit
-      run: |
-        echo "=== 准备提交生成的文件 ==="
-        
-        # 获取当前日期（与前面一致）
-        if [ -n "${{ github.event.inputs.date }}" ]; then
-          CURRENT_DATE="${{ github.event.inputs.date }}"
-        else
-          CURRENT_DATE=$(date +%Y-%m-%d)
-        fi
-        echo "当前日期: $CURRENT_DATE"
-        
-        # 只添加实际存在的文件
-        FILES_TO_COMMIT=""
-        
-        # 1. 添加TeX文件（如果存在）
-        TEX_FILE="data/raw/daily_feedback_tex/daily_feedback_${CURRENT_DATE}.tex"
-        if [ -f "$TEX_FILE" ]; then
-          # 复制一份到根目录并重命名为latest.tex
-          cp "$TEX_FILE" "latest.tex"
-          git add latest.tex
-          FILES_TO_COMMIT="$FILES_TO_COMMIT latest.tex"
-          echo "✓ 添加 latest.tex"
-        else
-          echo "⚠ 跳过 TeX 文件 (文件不存在: $TEX_FILE)"
-          # 检查是否有其他TeX文件
-          LATEST_TEX=$(find data/raw/daily_feedback_tex -name "daily_feedback_*.tex" -type f | sort | tail -1)
-          if [ -n "$LATEST_TEX" ]; then
-            cp "$LATEST_TEX" "latest.tex"
-            git add latest.tex
-            FILES_TO_COMMIT="$FILES_TO_COMMIT latest.tex"
-            echo "✓ 添加最新TeX文件: $(basename $LATEST_TEX) -> latest.tex"
+    steps:
+      - name: Validate source options
+        env:
+          SKIP_FETCH: ${{ inputs.skip_fetch }}
+          SOURCE_RUN_ID: ${{ inputs.source_run_id }}
+        run: |
+          if [[ "$SKIP_FETCH" == true && ! "$SOURCE_RUN_ID" =~ ^[1-9][0-9]*$ ]]; then
+            echo "::error::启用 skip_fetch 时须提供含有 arxiv-source 产物的 source_run_id"
+            exit 1
           fi
-        fi
-        
-        # 2. 添加HTML文件（如果存在）
-        if [ -d "docs" ]; then
-          # 确保docs目录存在.gitkeep或至少一个文件
-          if [ ! -f "docs/.gitkeep" ] && [ -z "$(ls -A docs/ 2>/dev/null)" ]; then
-            touch docs/.gitkeep
+          if [[ "$SKIP_FETCH" != true && -n "$SOURCE_RUN_ID" ]]; then
+            echo "::error::仅在启用 skip_fetch 时填写 source_run_id"
+            exit 1
           fi
-          
-          git add docs/
-          FILES_TO_COMMIT="$FILES_TO_COMMIT docs/"
-          echo "✓ 添加 docs/ 目录"
-          echo "docs目录中的文件:"
-          ls -la docs/ || echo "无法列出docs目录"
-        else
-          echo "⚠ 跳过 docs/ (目录不存在)"
-        fi
-        
-        # 3. 添加data目录中的JSON文件（如果存在）
-        if [ -d "data" ]; then
-          # 只添加JSON文件，不添加被.gitignore忽略的文件
-          find data/ -name "*.json" -type f -exec git add {} + 2>/dev/null || true
-          FILES_TO_COMMIT="$FILES_TO_COMMIT data/*.json"
-          echo "✓ 添加 data/ 目录中的JSON文件"
-        else
-          echo "⚠ 跳过 data/ (目录不存在)"
-        fi
-        
-        # 检查是否有文件要提交
-        if [ -z "$FILES_TO_COMMIT" ]; then
-          echo "❌ 没有文件可提交"
-          echo "changed=false" >> $GITHUB_OUTPUT
-          exit 0
-        fi
-        
-        # 检查是否有更改
-        if git diff --cached --quiet; then
-          echo "没有文件更改，跳过提交"
-          echo "changed=false" >> $GITHUB_OUTPUT
-        else
-          # 提交更改
-          git commit -m "自动生成: arXiv日报 $CURRENT_DATE [TeX + HTML]" || echo "没有新内容可提交"
-        
-        # 在提交本地更改后，再拉取远程更新，尝试变基
-        echo "正在拉取远程最新更改并变基..."
-        git pull origin main --rebase --autostash || echo "拉取/变基失败，继续尝试推送"
-        
-        # 判断是否有需要推送的提交
-        if git log origin/main..HEAD --oneline | grep -q .; then
-          echo "检测到本地有新提交，将尝试推送"
-          echo "changed=true" >> $GITHUB_OUTPUT
-        else
-          echo "本地没有新提交，无需推送"
-          echo "changed=false" >> $GITHUB_OUTPUT
-        fi
-        fi
-    
-    - name: Push changes
-      if: steps.commit.outputs.changed == 'true'
-      run: |
-        echo "=== 推送更改到仓库 ==="
-        
-        # 尝试推送，最多重试3次
-        MAX_RETRIES=3
-        RETRY_COUNT=0
-        
-        while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
-          echo "尝试推送 (第 $((RETRY_COUNT+1)) 次)..."
-          
-          # 拉取最新更改，避免冲突
-          git pull origin main --rebase || echo "拉取失败，继续推送"
-          
-          if git push; then
-            echo "✓ 推送成功"
-            break
+
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.ref }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.10'
+          cache: pip
+
+      - name: Install Python dependencies
+        run: python -m pip install -r requirements.txt
+
+      - name: Download source cache
+        if: inputs.skip_fetch
+        uses: actions/download-artifact@v8
+        with:
+          name: arxiv-source
+          path: ${{ runner.temp }}/arxiv-cache
+          github-token: ${{ github.token }}
+          run-id: ${{ inputs.source_run_id }}
+
+      - name: Check source and generate report
+        id: pipeline
+        env:
+          DEEPSEEK_API_KEY: ${{ !inputs.test_mode && secrets.DEEPSEEK_API_KEY || '' }}
+          REPORT_DATE: ${{ inputs.date }}
+          SKIP_FETCH: ${{ inputs.skip_fetch }}
+          TEST_MODE: ${{ inputs.test_mode }}
+        run: |
+          args=(--artifact-dir "$RUNNER_TEMP/arxiv-report")
+          if [[ "$SKIP_FETCH" == true ]]; then
+            args+=(--cache-dir "$RUNNER_TEMP/arxiv-cache")
           else
-            RETRY_COUNT=$((RETRY_COUNT+1))
-            if [ $RETRY_COUNT -lt $MAX_RETRIES ]; then
-              echo "推送失败，等待10秒后重试..."
-              sleep 10
-            else
-              echo "❌ 推送失败，已重试 $MAX_RETRIES 次"
-              exit 1
+            args+=(--cache-output-dir "$RUNNER_TEMP/arxiv-source")
+          fi
+          if [[ "$TEST_MODE" == true ]]; then
+            args+=(--test-mode)
+          fi
+          if [[ -n "$REPORT_DATE" ]]; then
+            args+=(--date "$REPORT_DATE")
+          fi
+          python scripts/run_pipeline.py "${args[@]}"
+
+      - name: Upload source cache
+        if: "!cancelled() && steps.pipeline.outputs.cache_ready == 'true'"
+        uses: actions/upload-artifact@v7
+        with:
+          name: arxiv-source
+          path: ${{ runner.temp }}/arxiv-source/
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Upload this report
+        if: steps.pipeline.outputs.result == 'generated' || steps.pipeline.outputs.result == 'test'
+        uses: actions/upload-artifact@v7
+        with:
+          name: arxiv-${{ steps.pipeline.outputs.result }}-${{ steps.pipeline.outputs.report_date }}
+          path: ${{ runner.temp }}/arxiv-report/
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Publish successful results to main
+        if: github.ref == 'refs/heads/main' && !inputs.test_mode
+        id: publish
+        env:
+          RESULT: ${{ steps.pipeline.outputs.result }}
+          REPORT_DATE: ${{ steps.pipeline.outputs.report_date }}
+        run: |
+          if [[ "$RESULT" == generated ]]; then
+            git add -- docs/ latest.tex data/pipeline_state.json
+          elif [[ "$RESULT" == unchanged ]]; then
+            git add -- docs/index.html
+            if [[ -f data/pipeline_state.json ]]; then
+              git add -- data/pipeline_state.json
             fi
-          fi
-        done
-    
-    - name: Upload artifacts
-      if: always()
-      uses: actions/upload-artifact@v4
-      with:
-        name: arxiv-daily-$(date +%Y-%m-%d)
-        path: |
-          latest.tex
-          docs/
-          data/raw/*.json
-        retention-days: 7
-    
-    - name: Create workflow summary
-      if: always()
-      run: |
-        echo "## arXiv Daily Paper Pipeline Report (TeX + HTML)" >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
-        echo "**执行时间:** $(date '+%Y-%m-%d %H:%M:%S %Z')" >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
-        
-        # 获取当前日期（与前面一致）
-        if [ -n "${{ github.event.inputs.date }}" ]; then
-          CURRENT_DATE="${{ github.event.inputs.date }}"
-        else
-          CURRENT_DATE=$(date +%Y-%m-%d)
-        fi
-        
-        TEX_FILE="data/raw/daily_feedback_tex/daily_feedback_${CURRENT_DATE}.tex"
-        
-        if [ -f "$TEX_FILE" ]; then
-          tex_size=$(stat -c%s "$TEX_FILE" 2>/dev/null || echo "unknown")
-          echo "✅ **TeX文件生成成功**" >> $GITHUB_STEP_SUMMARY
-          echo "- 文件: $TEX_FILE" >> $GITHUB_STEP_SUMMARY
-          echo "- 大小: $tex_size 字节" >> $GITHUB_STEP_SUMMARY
-        elif [ -f "latest.tex" ]; then
-          tex_size=$(stat -c%s latest.tex 2>/dev/null || echo "unknown")
-          echo "✅ **TeX文件生成成功**" >> $GITHUB_STEP_SUMMARY
-          echo "- 文件: latest.tex" >> $GITHUB_STEP_SUMMARY
-          echo "- 大小: $tex_size 字节" >> $GITHUB_STEP_SUMMARY
-        else
-          echo "❌ **TeX文件生成失败**" >> $GITHUB_STEP_SUMMARY
-          echo "- 未生成TeX文件" >> $GITHUB_STEP_SUMMARY
-        fi
-        
-        echo "" >> $GITHUB_STEP_SUMMARY
-        
-        if [ -d "docs" ]; then
-          html_files=$(find docs -name "*.html" -type f | wc -l)
-          if [ $html_files -gt 0 ]; then
-            echo "✅ **HTML文件生成成功**" >> $GITHUB_STEP_SUMMARY
-            echo "- 目录: docs/" >> $GITHUB_STEP_SUMMARY
-            echo "- HTML文件数量: $html_files" >> $GITHUB_STEP_SUMMARY
-            echo "- 最新HTML文件:" >> $GITHUB_STEP_SUMMARY
-            find docs -name "daily_*.html" -type f | sort | tail -1 | xargs basename | sed 's/^/- /' >> $GITHUB_STEP_SUMMARY
           else
-            echo "⚠ **HTML目录存在但无HTML文件**" >> $GITHUB_STEP_SUMMARY
-            echo "- 目录: docs/ (空)" >> $GITHUB_STEP_SUMMARY
+            echo "::error::缺少成功的日报处理结果"
+            exit 1
           fi
-        else
-          echo "❌ **HTML文件生成失败**" >> $GITHUB_STEP_SUMMARY
-          echo "- 未生成HTML文件" >> $GITHUB_STEP_SUMMARY
-        fi
-        
-        echo "" >> $GITHUB_STEP_SUMMARY
-        echo "**工作流状态:**" >> $GITHUB_STEP_SUMMARY
-        echo "- 总体结果: ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
-        echo "- 生成的文件已提交到仓库" >> $GITHUB_STEP_SUMMARY
-        echo "- 包含: TeX文件 + HTML文件" >> $GITHUB_STEP_SUMMARY
-        
-        echo "" >> $GITHUB_STEP_SUMMARY
-        echo "---" >> $GITHUB_STEP_SUMMARY
-        echo "*此报告由GitHub Actions自动生成*" >> $GITHUB_STEP_SUMMARY
+          if git diff --cached --quiet; then
+            echo "pushed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [[ "$RESULT" == generated ]]; then
+            message="自动生成: arXiv 日报 $REPORT_DATE [TeX + HTML]"
+          else
+            message="更新 arXiv 公告检查时间"
+          fi
+          git -c user.name='github-actions[bot]' \
+              -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
+              commit -m "$message"
+          git push origin HEAD:refs/heads/main
+          echo "pushed=true" >> "$GITHUB_OUTPUT"
+
+      - name: Create workflow summary
+        if: always()
+        env:
+          RESULT: ${{ steps.pipeline.outputs.result }}
+          SOURCE_DATE: ${{ steps.pipeline.outputs.source_date }}
+          REPORT_DATE: ${{ steps.pipeline.outputs.report_date }}
+          PAPER_COUNT: ${{ steps.pipeline.outputs.paper_count }}
+          PUSHED: ${{ steps.publish.outputs.pushed }}
+          JOB_STATUS: ${{ job.status }}
+        run: |
+          {
+            echo "## arXiv 日报运行结果"
+            echo
+            echo "- 工作流状态: $JOB_STATUS"
+            if [[ -n "$SOURCE_DATE" ]]; then
+              echo "- arXiv 公告日期: $SOURCE_DATE"
+              echo "- 北京时间日报日期: $REPORT_DATE"
+              echo "- 源论文数: $PAPER_COUNT"
+            fi
+            case "$RESULT" in
+              generated) echo "- 已生成 TeX 和 HTML 日报" ;;
+              unchanged) echo "- 未发现需要生成的新日报" ;;
+              test) echo "- 已生成测试预览" ;;
+              *) echo "- 未完成日报处理" ;;
+            esac
+            if [[ "$PUSHED" == true ]]; then
+              echo "- 已推送到 main"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -5,8 +5,8 @@ from bs4 import BeautifulSoup
 import json
 import re
 import time
-from datetime import datetime
-from collections import defaultdict
+from datetime import datetime, timezone
+from urllib3.util import Retry
 
 # 添加项目根目录到Python路径
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -14,7 +14,6 @@ sys.path.insert(0, project_root)
 
 # 从现有的config模块导入配置
 from config.loader import load_config
-from config.settings import Config
 
 # 加载配置
 config = load_config()
@@ -23,49 +22,67 @@ DATA_RAW_DIR = config.DATA_RAW_DIR
 ARXIV_BASE_URL = config.ARXIV_BASE_URL
 REQUEST_DELAY = getattr(config, 'REQUEST_DELAY', 1)
 INCLUDE_REPLACEMENTS = getattr(config, 'INCLUDE_REPLACEMENTS', False)
+LISTING_DATE = "Showing new listings for "
+SECTION_HEADING = re.compile(
+    r"^(New submissions|Cross submissions|Replacement submissions)"
+    r" \(showing ([\d,]+) of ([\d,]+) entries\)$",
+    re.IGNORECASE,
+)
 
 def create_robust_session():
     """创建具有重试策略的稳健会话"""
     session = requests.Session()
     
-    # 简单的重试适配器
-    adapter = requests.adapters.HTTPAdapter(max_retries=3)
+    retries = Retry(total=3, backoff_factor=1, status_forcelist=(429, 500, 502, 503, 504))
+    adapter = requests.adapters.HTTPAdapter(max_retries=retries)
     session.mount("http://", adapter)
     session.mount("https://", adapter)
     
     return session
 
-def fetch_papers_from_new_page(category_code):
-    """从arXiv的new页面获取论文信息"""
+def parse_listing(content, category_code):
+    """读取实际的公告日期，并验证纳入的列表没有缺项。"""
+    soup = BeautifulSoup(content, 'html.parser')
+    headings = soup.find_all(['h2', 'h3'])
+    heading = next((tag.get_text(' ', strip=True) for tag in headings
+                    if tag.get_text(' ', strip=True).startswith(LISTING_DATE)), None)
+    if heading is None:
+        raise ValueError(f"{category_code}: 无法识别 arXiv 公告日期")
+    announced = datetime.strptime(heading.removeprefix(LISTING_DATE), '%A, %d %B %Y').date()
+
+    expected = 0
+    found = False
+    include = False
+    papers = []
+    for tag in soup.find_all(['h2', 'h3', 'dt']):
+        if tag.name != 'dt':
+            section = SECTION_HEADING.fullmatch(tag.get_text(' ', strip=True))
+            include = False
+            if section:
+                found = True
+                name, visible, total = section.groups()
+                include = INCLUDE_REPLACEMENTS or name.lower() != 'replacement submissions'
+                if include:
+                    total = int(total.replace(',', ''))
+                    if int(visible.replace(',', '')) != total:
+                        raise ValueError(f"{category_code}: arXiv 公告未显示完整列表")
+                    expected += total
+        elif include:
+            paper = extract_paper_info(tag)
+            if paper is not None:
+                papers.append(paper)
+
+    empty = re.search(r'\bTotal of 0 entries\b', soup.get_text(' ', strip=True))
+    if (not found and not empty) or len(papers) != expected:
+        raise ValueError(f"{category_code}: arXiv 公告条目解析不完整")
+    return announced, papers
+
+
+def fetch_papers_from_new_page(session, category_code):
     url = f"{ARXIV_BASE_URL}/list/{category_code}/new"
-    
-    try:
-        response = requests.get(url)
-        response.raise_for_status()
-        
-        soup = BeautifulSoup(response.content, 'html.parser')
-        
-        # 找到主要内容区域，排除替换论文
-        content = str(soup)
-        if "Replacement submissions" in content and not INCLUDE_REPLACEMENTS:
-            # 只获取第一个"Replacement submissions"之前的内容
-            content = content.split("Replacement submissions")[0]
-            soup = BeautifulSoup(content, 'html.parser')
-        
-        papers = []
-        # 查找所有的dt标签（每个论文条目）
-        dt_tags = soup.find_all('dt')
-        
-        for dt in dt_tags:
-            paper_info = extract_paper_info(dt)
-            if paper_info:
-                papers.append(paper_info)
-        
-        return papers
-        
-    except Exception as e:
-        print(f"获取 {category_code} 论文时出错: {e}")
-        return []
+    response = session.get(url, params={'show': 2000}, timeout=30)
+    response.raise_for_status()
+    return parse_listing(response.content, category_code)
 
 def extract_paper_info(dt_tag):
     """从dt标签中提取论文信息"""
@@ -115,7 +132,7 @@ def extract_paper_info(dt_tag):
             'authors': authors,
             'categories': categories,
             'abstract': abstract,
-            'fetched_at': datetime.now().isoformat()
+            'fetched_at': datetime.now(timezone.utc).isoformat()
         }
         
     except Exception as e:
@@ -136,55 +153,39 @@ def deduplicate_papers(all_papers_dict):
     # 转换为列表并按ID排序
     return sorted(unique_papers.values(), key=lambda x: x['id'])
 
+def fetch_latest_issue():
+    category_papers = {}
+    dates = {}
+    with create_robust_session() as session:
+        for category_name, category_code in CATEGORIES.items():
+            if category_papers:
+                time.sleep(REQUEST_DELAY)
+            dates[category_name], category_papers[category_name] = fetch_papers_from_new_page(
+                session, category_code
+            )
+            print(f"{category_name}: {dates[category_name]}，{len(category_papers[category_name])} 篇论文")
+
+    if len(set(dates.values())) != 1:
+        raise ValueError(f"各学科未返回同一 arXiv 公告日期: {dates}")
+    return next(iter(dates.values())), category_papers
+
+
 def main():
-    """主函数"""
-    print("开始从arXiv new页面获取论文信息...")
-    print("=" * 50)
-    
-    # 确保数据目录存在
-    os.makedirs(DATA_RAW_DIR, exist_ok=True)
-    
-    all_papers_by_category = {}
-    
-    for category_name, category_code in CATEGORIES.items():
-        print(f"\n处理分类: {category_name} ({category_code})")
-        
-        # 获取论文信息
-        papers = fetch_papers_from_new_page(category_code)
-        
-        if papers:
-            print(f"✓ 获取到 {len(papers)} 篇论文")
-            
-            # 保存到分类文件
-            filename = f"{category_name.lower()}_papers.json"
-            filepath = os.path.join(DATA_RAW_DIR, filename)
-            
-            with open(filepath, 'w', encoding='utf-8') as f:
+    try:
+        source_date, categories = fetch_latest_issue()
+        os.makedirs(DATA_RAW_DIR, exist_ok=True)
+        for name, papers in categories.items():
+            with open(os.path.join(DATA_RAW_DIR, f"{name.lower()}_papers.json"), 'w', encoding='utf-8') as f:
                 json.dump(papers, f, indent=2, ensure_ascii=False)
-            
-            print(f"✓ 论文信息已保存到: {filepath}")
-            
-            # 添加到分类集合
-            all_papers_by_category[category_name] = papers
-            
-            # 添加延迟避免请求过快
-            time.sleep(REQUEST_DELAY)
-        else:
-            print("✗ 未获取到论文信息")
-    
-    # 去重处理
-    if all_papers_by_category:
-        unique_papers = deduplicate_papers(all_papers_by_category)
-        
-        # 保存去重后的论文列表
-        unique_file = os.path.join(DATA_RAW_DIR, "all_papers_unique.json")
-        with open(unique_file, 'w', encoding='utf-8') as f:
-            json.dump(unique_papers, f, indent=2, ensure_ascii=False)
-        
-        print(f"\n✓ 去重后的论文列表已保存到: {unique_file}")
-        print(f"✓ 总共获取到 {len(unique_papers)} 篇唯一论文")
-    
-    print("\n完成！")
+
+        papers = deduplicate_papers(categories)
+        with open(os.path.join(DATA_RAW_DIR, 'all_papers_unique.json'), 'w', encoding='utf-8') as f:
+            json.dump(papers, f, indent=2, ensure_ascii=False)
+        print(f"{source_date}: {len(papers)} 篇唯一论文")
+        return 0
+    except (OSError, ValueError, requests.RequestException) as exc:
+        print(f"抓取 arXiv 公告失败: {exc}", file=sys.stderr)
+        return 1
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

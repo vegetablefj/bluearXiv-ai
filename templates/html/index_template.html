@@ -2,196 +2,242 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>bluearXiv-ai 不漏arXiv-ai</title>
-    <!-- KaTeX for LaTeX rendering -->
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="按学科和关键词追踪 arXiv 论文，阅读精选论文的中文摘要，并浏览往期日报。">
+    <title>bluearXiv · arXiv 论文日报</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
     <style>
-        body {
-            font-family: 'Helvetica Neue', Arial, sans-serif;
-            line-height: 1.5;
-            color: #333;
-            max-width: 1000px;
-            margin: 0 auto;
-            padding: 15px;
-            background-color: #f8f9fa;
-            font-size: 14px;
+        :root {
+            color-scheme: light;
+            --background: #f8f9fa;
+            --surface: #fff;
+            --text: #2c3e50;
+            --muted: #526477;
+            --primary: #236b9a;
+            --accent: #e8f4fc;
+            --border: #d7e0e8;
+            --font: system-ui, "PingFang SC", "Microsoft YaHei", sans-serif;
         }
-        .header {
-            text-align: center;
-            margin-bottom: 25px;
-            padding-bottom: 15px;
-            border-bottom: 2px solid #4a6fa5;
-        }
-        .header h1 {
-            color: #2c3e50;
-            font-size: 1.8em;
-            margin-bottom: 8px;
-        }
-        .header .subtitle {
-            color: #7f8c8d;
-            font-size: 1em;
-        }
-        .config-section {
-            background: white;
-            border-radius: 6px;
-            padding: 15px;
-            margin-bottom: 20px;
-            box-shadow: 0 1px 5px rgba(0,0,0,0.1);
-        }
-        .config-title {
-            font-size: 1.2em;
-            color: #2c3e50;
-            margin-top: 0;
-            margin-bottom: 10px;
-            border-bottom: 1px solid #eee;
-            padding-bottom: 5px;
-        }
-        .config-list {
-            list-style: none;
-            padding: 0;
-            margin: 0;
-        }
-        .config-item {
-            display: inline-block;
-            background-color: #e8f4fc;
-            color: #2c3e50;
-            padding: 3px 8px;
-            border-radius: 4px;
-            font-size: 0.85em;
-            margin: 0 5px 5px 0;
-        }
-        .date-list {
+
+        * { box-sizing: border-box; }
+        [hidden] { display: none !important; }
+        html { scroll-behavior: smooth; }
+        body { margin: 0; background: var(--background); color: var(--text); font: 1rem/1.65 var(--font); }
+        a { color: var(--primary); text-decoration-thickness: 1px; text-underline-offset: .2em; }
+        a:hover { text-decoration-thickness: 2px; }
+        :focus-visible { outline: 2px solid #245e8a; outline-offset: 4px; }
+        h1, h2, h3, p { margin: 0; }
+        .shell { width: min(1120px, calc(100% - 3rem)); margin-inline: auto; }
+        .site-header { border-bottom: 1px solid var(--border); background: var(--surface); }
+        .site-bar { min-height: 4.25rem; display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+        .brand { flex: 0 0 auto; font-size: 1.15rem; font-weight: 760; letter-spacing: -.045em; }
+        .site-nav { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .5rem 1.4rem; font-size: .88rem; }
+        .site-nav a { color: var(--muted); text-decoration: none; }
+        .site-nav a:hover { text-decoration: underline; }
+        main { padding-block: clamp(1.5rem, 4vw, 3.25rem) 3rem; }
+
+        .edition {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-            gap: 12px;
+            grid-template-columns: minmax(0, 1fr) minmax(14rem, .44fr);
+            align-items: end;
+            gap: 1.5rem 3rem;
+            padding: clamp(1.5rem, 5vw, 3.5rem);
+            border-radius: 1.15rem;
+            color: var(--text);
+            background: var(--accent);
         }
-        .date-card {
-            background: white;
-            border-radius: 6px;
-            padding: 12px;
-            box-shadow: 0 1px 4px rgba(0,0,0,0.1);
-            transition: transform 0.2s, box-shadow 0.2s;
+        .edition h1 { font-size: 1rem; color: var(--primary); font-weight: 650; }
+        .edition-date { margin-top: .35rem; font-size: clamp(1.8rem, 5.5vw, 3.8rem); line-height: 1.22; letter-spacing: -.055em; font-weight: 730; }
+        .edition-summary { margin-top: .65rem; color: var(--muted); }
+        .edition-link { display: inline-flex; align-items: center; gap: .8rem; margin-top: 1.45rem; padding: .64rem .95rem; border-radius: .5rem; color: var(--surface); background: #4a6fa5; font-weight: 680; text-decoration: none; }
+        .edition-link:hover { background: #3a5a80; }
+        .edition :focus-visible { outline-color: #245e8a; }
+        .edition-status { border-inline-start: 1px solid #a7bdd2; padding-inline-start: 1.3rem; color: var(--muted); overflow-wrap: anywhere; }
+        .edition-status .status-label { display: block; color: var(--primary); font-size: .83rem; }
+        .edition-status time { font-variant-numeric: tabular-nums; }
+
+        .section { margin-top: 2.5rem; scroll-margin-top: 1rem; }
+        .section-header { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: .3rem 1rem; margin-bottom: .85rem; }
+        .section-header h2 { font-size: clamp(1.3rem, 3vw, 1.65rem); letter-spacing: -.035em; }
+        .feature-grid, .archive-list, .month-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr)); gap: .7rem; }
+        .feature-card, .date-card { min-width: 0; border: 1px solid var(--border); border-radius: .75rem; background: var(--surface); padding: .95rem 1rem; }
+        .feature-card:hover, .date-card:hover { border-color: #8ea7c1; }
+        .feature-title { font-size: .98rem; line-height: 1.46; overflow-wrap: anywhere; }
+        .feature-title a, .date-link { color: var(--primary); text-decoration: none; }
+        .feature-title a:hover, .date-link:hover { color: #1a5276; text-decoration: underline; }
+        .feature-meta, .stats { color: var(--muted); font-size: .83rem; margin-top: .4rem; }
+        .feature-title .katex-display { text-align: left; overflow: auto; }
+        .date-link { font-weight: 670; }
+        .category-tags { display: flex; flex-wrap: wrap; gap: .25rem; margin-top: .45rem; }
+        .category-tag, .config-item { display: inline-block; padding: .1rem .38rem; background: var(--accent); color: var(--text); border-radius: .28rem; font-size: .74rem; }
+
+        .archive-filters { display: flex; flex-wrap: wrap; align-items: end; gap: .6rem 1rem; margin-bottom: .85rem; }
+        .archive-filters label { display: grid; gap: .2rem; color: var(--muted); font-size: .84rem; }
+        .archive-filters select, .archive-filters input { min-height: 2.7rem; border: 1px solid #788ba0; border-radius: .42rem; padding: .4rem .55rem; background: var(--surface); color: var(--text); font: inherit; }
+        .archive-list.has-months { display: block; }
+        .archive-month + .archive-month { margin-top: 1.35rem; }
+        .archive-month h3 { margin-bottom: .45rem; color: var(--muted); font-size: .9rem; font-weight: 670; }
+        .filter-result { font-size: .86rem; color: var(--muted); margin-bottom: .55rem; }
+        .settings { border-block: 1px solid var(--border); padding-block: .8rem; margin-top: 2.5rem; scroll-margin-top: 1rem; }
+        summary { font-weight: 680; cursor: pointer; }
+        .settings h3 { margin-top: .8rem; font-size: .88rem; }
+        .config-list { padding-left: 0; display: flex; flex-wrap: wrap; gap: .35rem; list-style: none; margin: .35rem 0 .65rem; }
+        .site-footer { border-top: 1px solid var(--border); padding-block: 1.1rem 1.6rem; font-size: .82rem; color: var(--muted); }
+
+        @media (max-width: 640px) {
+            .shell { width: calc(100% - 1.5rem); }
+            .site-bar { min-height: 3.6rem; gap: .5rem; }
+            .site-nav { gap: .3rem .65rem; font-size: .78rem; }
+            .edition { grid-template-columns: 1fr; }
+            .edition-status { border-inline-start: 0; border-top: 1px solid #a7bdd2; padding: .7rem 0 0; }
         }
-        .date-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 3px 8px rgba(0,0,0,0.15);
-        }
-        .date-link {
-            text-decoration: none;
-            color: #2980b9;
-            font-size: 1.1em;
-            font-weight: bold;
-            display: block;
-            margin-bottom: 6px;
-        }
-        .date-link:hover {
-            color: #1a5276;
-            text-decoration: underline;
-        }
-        .stats {
-            font-size: 0.8em;
-            color: #666;
-            margin-top: 6px;
-        }
-        .stat-item {
-            margin: 2px 0;
-        }
-        .category-tag {
-            display: inline-block;
-            background-color: #e8f4fc;
-            color: #2c3e50;
-            padding: 1px 5px;
-            border-radius: 3px;
-            font-size: 0.75em;
-            margin-right: 3px;
-            margin-bottom: 3px;
-        }
-        .footer {
-            text-align: left;
-            margin-top: 25px;
-            padding-top: 15px;
-            border-top: 1px solid #ddd;
-            color: #7f8c8d;
-            font-size: 0.85em;
-            line-height: 1.4;
-        }
-        .footnote {
-            font-size: 0.8em;
-            color: #888;
-            margin-top: 10px;
-            text-align: left;
-            max-width: 800px;
-            margin-left: auto;
-            margin-right: auto;
-        }
-        @media (max-width: 768px) {
-            .date-list {
-                grid-template-columns: 1fr;
-            }
-            .header h1 {
-                font-size: 1.6em;
-            }
-            .date-card {
-                padding: 10px;
-            }
+
+        @media (prefers-reduced-motion: reduce) {
+            html { scroll-behavior: auto; }
         }
     </style>
 </head>
 <body>
-    <div class="header">
-        <h1>bluearXiv-ai 不漏arXiv-ai</h1>
-        <div class="subtitle">每日最新论文AI分析与精选</div>
-    </div>
-    
-    <!-- 特定学科列表 -->
-    <div class="config-section">
-        <h3 class="config-title">📚 跟踪学科 (Categories)</h3>
-        <ul class="config-list">
-            {{CATEGORIES_LIST_PLACEHOLDER}}
-        </ul>
-    </div>
-    
-    <!-- 关键词列表 -->
-    <div class="config-section">
-        <h3 class="config-title">🔍 筛选关键词 (Keywords)</h3>
-        <ul class="config-list">
-            {{KEYWORDS_LIST_PLACEHOLDER}}
-        </ul>
-    </div>
-    
-    <div class="date-list">
-        <!-- 日期列表占位符 - 将在生成时按日期倒序排列 -->
-        {{DATE_LIST_PLACEHOLDER}}
-    </div>
-    
-    <div class="footer">
-        <p>- 最后更新 Last Update (UTC) : {{LAST_UPDATE}}</p>
-        <p>- 数据来源 Data Source: <a href="https:arXiv.org">arXiv.org</a></p>
-        <p>- 本网页的内容由 <a href="https://github.com/vegetablefj/bluearXiv-ai">bluearXiv-ai</a> 自动生成。实际抓取的是 arXiv 中 "new" 页面的数据，即最近的有所在分类论文变动的一天的数据。</p>
-        <p>- 感谢 arXiv 提供的服务。评论和精选由 AI 生成，不代表任何人对论文本身的看法。精选依赖于论文与给定关键词的匹配度。</p>
-        <p>- 计数基于主学科，不计重数。</p>
-        <p>- This webpage is automatically generated by <a href="https://github.com/vegetablefj/bluearXiv-ai">bluearXiv-ai</a>.</p>
-        <p>- The data actually captured is from the "new" page, that is, the data of the most recent day when there were changes in corresponding subjects.</p>
-        <p>- Thanks for services prodived by arXiv. Comments and selection of good papers are generated by AI, not showing anyone's point of view about those papers. </p>
-        <p>- The selection also depends on the matched-degrees between papers and given keywords. </p>
-        <p>- The counters are based on main subject, not counting multiplicities.</p>
-    </div>
+    <header class="site-header">
+        <div class="shell site-bar">
+            <span class="brand">bluearXiv</span>
+            <nav class="site-nav" aria-label="网站导航">
+                <a href="#featured">精选</a>
+                <a href="#archive">往期</a>
+                <a href="#coverage">跟踪范围</a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="shell">
+        <section class="edition" aria-labelledby="latest-heading">
+            <div>
+                <h1 id="latest-heading">最新一期 arXiv 论文日报</h1>
+                {{LATEST_EDITION_PLACEHOLDER}}
+            </div>
+            <p class="edition-status">
+                <span class="status-label">最近成功检查</span>
+                {{LAST_CHECK_PLACEHOLDER}}
+            </p>
+        </section>
+
+        <section id="featured" class="section" aria-labelledby="featured-heading">
+            <div class="section-header">
+                <h2 id="featured-heading">本期精选</h2>
+            </div>
+            <div class="feature-grid">
+                {{FEATURED_PAPERS_PLACEHOLDER}}
+            </div>
+        </section>
+
+        <section id="archive" class="section" aria-labelledby="archive-heading">
+            <div class="section-header">
+                <h2 id="archive-heading">往期日报</h2>
+            </div>
+            <div id="archive-filters" class="archive-filters" hidden>
+                <label>按月份
+                    <select id="archive-month"><option value="">所有月份</option></select>
+                </label>
+                <label>按日期
+                    <input id="archive-date" type="date">
+                </label>
+            </div>
+            <p id="archive-result" class="filter-result" aria-live="polite" hidden></p>
+            <div id="archive-list" class="archive-list">
+                {{DATE_LIST_PLACEHOLDER}}
+            </div>
+        </section>
+
+        <details id="coverage" class="settings">
+            <summary>跟踪学科和筛选关键词</summary>
+            <h3>学科</h3>
+            <ul class="config-list">{{CATEGORIES_LIST_PLACEHOLDER}}</ul>
+            <h3>关键词</h3>
+            <ul class="config-list">{{KEYWORDS_LIST_PLACEHOLDER}}</ul>
+        </details>
+    </main>
+
+    <footer class="site-footer">
+        <div class="shell">
+            <p>中文摘要由 AI 根据 <a href="https://arxiv.org/">arXiv</a> 原摘要译写。统计按论文主学科去重。</p>
+            <a href="https://github.com/vegetablefj/bluearXiv-ai">项目源代码</a>
+        </div>
+    </footer>
 
     <script>
-        // KaTeX自动渲染配置
-        document.addEventListener('DOMContentLoaded', function() {
-            renderMathInElement(document.body, {
-                delimiters: [
-                    {left: '$$', right: '$$', display: true},
-                    {left: '$', right: '$', display: false},
-                    {left: '\\(', right: '\\)', display: false},
-                    {left: '\\[', right: '\\]', display: true}
-                ],
-                throwOnError: false
+        const archive = document.getElementById('archive-list');
+        const cards = Array.from(archive.querySelectorAll('[data-date]'));
+
+        if (cards.length) {
+            const monthSelect = document.getElementById('archive-month');
+            const dateInput = document.getElementById('archive-date');
+            const result = document.getElementById('archive-result');
+            const months = new Map();
+
+            for (const card of cards) {
+                const month = card.dataset.date.slice(0, 7);
+                if (!months.has(month)) {
+                    const group = document.createElement('section');
+                    const heading = document.createElement('h3');
+                    const grid = document.createElement('div');
+                    const [year, number] = month.split('-');
+                    const monthLabel = year + '年' + Number(number) + '月';
+                    group.className = 'archive-month';
+                    grid.className = 'month-grid';
+                    heading.textContent = monthLabel;
+                    group.append(heading, grid);
+                    months.set(month, { group, grid });
+                    monthSelect.add(new Option(monthLabel, month));
+                }
+                months.get(month).grid.append(card);
+            }
+            archive.classList.add('has-months');
+            archive.replaceChildren(...Array.from(months.values(), ({ group }) => group));
+            monthSelect.value = months.keys().next().value;
+            document.getElementById('archive-filters').hidden = false;
+            result.hidden = false;
+
+            function filterArchive() {
+                let visible = 0;
+                for (const [month, { group, grid }] of months) {
+                    const inMonth = !monthSelect.value || monthSelect.value === month;
+                    for (const card of grid.children) {
+                        card.hidden = !inMonth || (dateInput.value !== '' && card.dataset.date !== dateInput.value);
+                        if (!card.hidden) visible++;
+                    }
+                    group.hidden = !grid.querySelector('.date-card:not([hidden])');
+                }
+                result.textContent = visible ? '共 ' + visible + ' 期日报' : '未找到该日期的日报';
+            }
+
+            monthSelect.addEventListener('change', () => {
+                dateInput.value = '';
+                filterArchive();
             });
+            dateInput.addEventListener('change', () => {
+                const month = dateInput.value.slice(0, 7);
+                monthSelect.value = months.has(month) ? month : '';
+                filterArchive();
+            });
+            filterArchive();
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            if (typeof renderMathInElement === 'function') {
+                document.querySelectorAll('.feature-title').forEach((title) => {
+                    renderMathInElement(title, {
+                        delimiters: [
+                            {left: '$$', right: '$$', display: true},
+                            {left: '\\[', right: '\\]', display: true},
+                            {left: '\\(', right: '\\)', display: false},
+                            {left: '$', right: '$', display: false}
+                        ],
+                        throwOnError: false
+                    });
+                });
+            }
         });
     </script>
 </body>

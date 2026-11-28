@@ -2,7 +2,7 @@ import sys
 import os
 import json
 import re
-from datetime import datetime
+from datetime import date
 from pathlib import Path
 from collections import defaultdict
 
@@ -320,13 +320,18 @@ def process_template(template_content, counter_section, selection_section, body_
 
 def main():
     """主函数：生成LaTeX文件"""
+    import argparse
+
+    parser = argparse.ArgumentParser(description="生成 LaTeX 格式的 arXiv 报告")
+    parser.add_argument("--date", type=date.fromisoformat, help="日报日期（YYYY-MM-DD）")
+    args = parser.parse_args()
     print("开始生成LaTeX文件...")
     print("=" * 50)
     
     # 加载论文数据
     categorized_papers = load_papers_feedback()
     if categorized_papers is None:
-        return
+        return 1
     
     # 显示统计信息
     print("论文统计:")
@@ -361,19 +366,19 @@ def main():
     try:
         with open(template_file, 'r', encoding='utf-8') as f:
             template_content = f.read()
-        print(f"✓ 加载模板: {template_file}")
+        print(f"已加载模板: {template_file}")
     except FileNotFoundError:
         print(f"错误: 模板文件 {template_file} 不存在")
-        return
+        return 1
     except Exception as e:
         print(f"加载模板时出错: {e}")
-        return
+        return 1
     
-    # 处理模板
+    date_str = (args.date or date.today()).isoformat()
+    # 固定标题日期，避免稍后编译时显示编译当天。
+    template_content = template_content.replace(r"\today", date_str, 1)
     processed_content = process_template(template_content, counter_section, selection_section, body_section)
-    
-    # 生成输出文件名
-    date_str = datetime.now().strftime("%Y-%m-%d")
+
     output_filename = f"daily_feedback_{date_str}.tex"
     output_dir = os.path.join(DATA_RAW_DIR, "daily_feedback_tex")
     os.makedirs(output_dir, exist_ok=True)
@@ -383,7 +388,7 @@ def main():
     try:
         with open(output_file, 'w', encoding='utf-8') as f:
             f.write(processed_content)
-        print(f"\n✓ LaTeX文件已保存到: {output_file}")
+        print(f"\nLaTeX文件已保存到: {output_file}")
         
         # 显示文件大小
         file_size = os.path.getsize(output_file)
@@ -391,6 +396,9 @@ def main():
         
     except Exception as e:
         print(f"保存LaTeX文件时出错: {e}")
+        return 1
+
+    return 0
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

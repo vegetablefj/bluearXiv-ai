@@ -59,10 +59,14 @@ def main():
     except FileNotFoundError:
         print(f"错误: 输入文件 {input_file} 不存在")
         print("请先运行 ai_feedback.py 生成论文反馈数据")
-        return
+        return 1
     except Exception as e:
         print(f"加载论文数据时出错: {e}")
-        return
+        return 1
+
+    if not isinstance(papers, list) or not papers:
+        print("论文反馈文件没有可分类的论文")
+        return 1
     
     # 统计精选论文数量
     selected_count = sum(1 for paper in papers if paper.get('selected', False))
@@ -76,7 +80,7 @@ def main():
     try:
         with open(output_file, 'w', encoding='utf-8') as f:
             json.dump(categorized_papers, f, indent=2, ensure_ascii=False)
-        print(f"\n✓ 分类论文数据已保存到: {output_file}")
+        print(f"\n分类论文数据已保存到: {output_file}")
         
         # 显示分类统计
         print("\n分类统计:")
@@ -92,6 +96,9 @@ def main():
         
     except Exception as e:
         print(f"保存分类数据时出错: {e}")
+        return 1
+
+    return 0
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
